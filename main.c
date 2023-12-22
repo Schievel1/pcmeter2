@@ -85,7 +85,6 @@ int main(void)
   tusb_init();
   meters_setup();
 
-  printf("Hello World From Pi Pico USB CDC\n");
   while (1)
   {
     tud_task(); // tinyusb device task

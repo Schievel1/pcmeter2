@@ -76,7 +76,6 @@ static void setMeter(int meterPin, int perc, int meterMax)
 {
   //Map perc to proper meter position
   int pos = map(perc, 0, 100, 0, meterMax);
-  printf("setting pin %d to %d (was %d perc)\n", meterPin, pos, perc);
   pwm_set_gpio_level(meterPin, pos);
 }
 
@@ -121,8 +120,6 @@ void meters_setup() {
     pwm_set_wrap(slice_num[1], 254);
     pwm_set_enabled(slice_num[0], true);
     pwm_set_enabled(slice_num[1], true);
-    pwm_set_gpio_level(METER_PINS[0], 0);
-    pwm_set_gpio_level(METER_PINS[1], 0);
 
     gpio_init(GREEN_LEDS[0]);
     gpio_set_dir(GREEN_LEDS[0], GPIO_OUT);
@@ -166,7 +163,6 @@ void meters_receiveSerialData()
           {
             ndx = numRecChars - 1;
           }
-          printf("got char %c \n", rc);
         }
         else
         {
@@ -174,7 +170,6 @@ void meters_receiveSerialData()
           ndx = 0;
           newData = true;
           char* debugstr = receivedChars;
-          printf("got string: %s \n", debugstr);
         }
 
     }
@@ -242,10 +237,10 @@ void meters_screenSaver()
 {
   if (board_millis() - lastSerialRecd > SERIAL_TIMEOUT)
   {
-    int aPos = 0;
+    static int aPos = 0;
     int bPos = 0;
-    int incAmt = 0;
-    unsigned long lastSSUpdate = board_millis();
+    static int incAmt = 0;
+    static unsigned long lastSSUpdate = 0;
 
     //Turn off all LEDs
     gpio_put(GREEN_LEDS[0], false);
@@ -253,19 +248,22 @@ void meters_screenSaver()
     gpio_put(RED_LEDS[0], false);
     gpio_put(RED_LEDS[1], false);
 
-    while (getchar_timeout_us(0) == ENDSTDIN)
+    char in = getchar_timeout_us(0);
+    if (in == ENDSTDIN || in < 0) // TODO add USB timeout here
     {
       unsigned long currentMillis = board_millis();
+
+      //B meter position is opposite of A meter position
+      bPos = 100 - aPos;
+
+      //Move needles
+      setMeter(METER_PINS[0], aPos, METER_MAX[0]);
+      setMeter(METER_PINS[1], bPos, METER_MAX[1]);
 
       //Update every 100ms
       if (currentMillis - lastSSUpdate > 100)
       {
-        //B meter position is opposite of A meter position
-        bPos = 100 - aPos;
-
-        //Move needles
-        setMeter(METER_PINS[0], aPos, METER_MAX[0]);
-        setMeter(METER_PINS[1], bPos, METER_MAX[1]);
+        lastSSUpdate = board_millis();
 
         //Change meter direction if needed.
         if (aPos == 100)
@@ -275,7 +273,6 @@ void meters_screenSaver()
 
         //Increment position
         aPos = aPos + incAmt;
-
         lastSSUpdate = currentMillis;
       }
     }
