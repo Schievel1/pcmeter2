@@ -34,3 +34,5 @@ pico_add_extra_outputs(pcmeter-pico)
 
 # add url via pico_set_program_url
 # example_auto_set_url(pcmeter-pico)
+pico_enable_stdio_usb(pcmeter-pico 1)
+pico_enable_stdio_uart(pcmeter-pico 0)
