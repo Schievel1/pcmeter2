@@ -30,6 +30,7 @@
 #include "pico/stdlib.h"
 #include "bsp/board.h"
 #include "tusb.h"
+#include "meters.h"
 
 /* This example demonstrate HID Generic raw Input & Output.
  * It will receive data from Host (In endpoint) and echo back (Out endpoint).
@@ -82,13 +83,18 @@ int main(void)
   board_init();
   stdio_init_all();
   tusb_init();
+  meters_setup();
 
   printf("Hello World From Pi Pico USB CDC\n");
   while (1)
   {
     tud_task(); // tinyusb device task
     led_blinking_task();
-    printf("Hello World From Pi Pico USB CDC\n");
+
+    meters_receiveSerialData();
+    meters_updateStats();
+    meters_updateMeters();
+    meters_screenSaver();
   }
 }
 
