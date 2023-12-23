@@ -156,6 +156,19 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
   (void) report_id;
   (void) report_type;
 
+  for(int i = 0; i<bufsize; i++) {
+    switch (buffer[i]) {
+      case 'C':
+        //CPU
+        updateLastValueReceived(0, MIN(buffer[i+1], 100));
+        break;
+      case 'M':
+        //Memory
+        updateLastValueReceived(1, MIN(buffer[i+1], 100));
+        break;
+    }
+    updateLastTimeReceived();
+  }
   // echo back anything we received from host
   tud_hid_report(0, buffer, bufsize);
 }

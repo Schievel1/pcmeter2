@@ -90,7 +90,7 @@ static void setLED(int greenPin, int redPin, int perc, int redPerc)
 
 
 //Max both meters on startup as a test
-static void meterStartup()
+static void meterStartup(void)
 {
  gpio_put(RED_LEDS[0], true);
  gpio_put(RED_LEDS[1], true);
@@ -107,7 +107,7 @@ static void meterStartup()
  sleep_ms(500);
 }
 
-void meters_setup() {
+void meters_setup(void) {
   //Setup pin modes
     /* gpio_init(METER_PINS[0]); */
     gpio_set_function(METER_PINS[0], GPIO_FUNC_PWM);
@@ -145,7 +145,7 @@ void meters_setup() {
 }
 
 #define ENDSTDIN 255
-void meters_receiveSerialData()
+void meters_receiveSerialData(void)
 {
     // This is the recvWithEndMarker() function
     // from Robin2's serial data tutorial
@@ -169,13 +169,12 @@ void meters_receiveSerialData()
           receivedChars[ndx] = '\0'; // terminate the string
           ndx = 0;
           newData = true;
-          char* debugstr = receivedChars;
         }
 
     }
 }
 
-void meters_updateStats()
+void meters_updateStats(void)
 {
   if (newData == true)
   {
@@ -192,15 +191,23 @@ void meters_updateStats()
     }
 
     //Update last serial received
-    lastSerialRecd = board_millis();
+    updateLastTimeReceived();
 
     //Ready to receive again
     newData = false;
   }
 }
 
+void updateLastValueReceived(int idx, int val) {
+  lastValueReceived[idx] = val;
+}
+
+void updateLastTimeReceived(void) {
+  lastSerialRecd = board_millis();
+}
+
 //Update meters and running stats
-void meters_updateMeters()
+void meters_updateMeters(void)
 {
   unsigned long currentMillis = board_millis();
 
@@ -208,8 +215,7 @@ void meters_updateMeters()
   {
     //Update both meters
     int i;
-    for(i = 0; i < 2; i++)
-    {
+    for(i = 0; i < 2; i++) {
       int perc = 0;
 
       //Based on https://www.arduino.cc/en/Tutorial/Smoothing
@@ -233,10 +239,9 @@ void meters_updateMeters()
 
 //Move needles back and forth to show no data is
 //being received. Stop once serial data rec'd again.
-void meters_screenSaver()
+void meters_screenSaver(void)
 {
-  if (board_millis() - lastSerialRecd > SERIAL_TIMEOUT)
-  {
+  if (board_millis() - lastSerialRecd > SERIAL_TIMEOUT) {
     static int aPos = 0;
     int bPos = 0;
     static int incAmt = 0;
@@ -249,8 +254,7 @@ void meters_screenSaver()
     gpio_put(RED_LEDS[1], false);
 
     char in = getchar_timeout_us(0);
-    if (in == ENDSTDIN || in < 0) // TODO add USB timeout here
-    {
+    if (in == ENDSTDIN || in < 0) { // TODO add USB timeout here
       unsigned long currentMillis = board_millis();
 
       //B meter position is opposite of A meter position
