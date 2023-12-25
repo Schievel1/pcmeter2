@@ -164,19 +164,19 @@ static const tusb_desc_device_t usbd_desc_device = {
 // |    Virtual Serial Port                                                   |
 // `--------------------------------------------------------------------------'
 
-#define EPNUM_CDC_CMD           (0x81)
-#define EPNUM_CDC_DATA          (0x82)
+#define EPNUM_CDC_NOTIF   ( 0x84 )
+#define EPNUM_CDC_OUT     ( 0x05 )
+#define EPNUM_CDC_IN      ( 0x85 )
 
-#define USBD_CDC_CMD_SIZE       (64)
+#define USBD_CDC_NOTIF_SIZE     (64)
 #define USBD_CDC_DATA_SIZE      (64)
 
 // .--------------------------------------------------------------------------.
 // |    HID Device                                                            |
 // `--------------------------------------------------------------------------'
 
-#define EPNUM_HID               (0x83)
+#define EPNUM_HID               (0x01)
 
-#define USBD_HID_BUFSIZE        (16)
 #define USBD_HID_POLL_INTERVAL  (10)
 
 #define REPORT_ID_KEYBOARD      (1)
@@ -216,16 +216,13 @@ static const uint8_t usbd_desc_cfg[USBD_DESC_LEN] = {
                           TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP,
                           USBD_MAX_POWER_MA),
 
+
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID, USBD_STR_HID_NAME, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, 0x80 | EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, USBD_HID_POLL_INTERVAL),
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC,
                       USBD_STR_CDC_NAME,
-                         EPNUM_CDC_CMD, USBD_CDC_CMD_SIZE,
-                         EPNUM_CDC_DATA & 0x7F,
-                         EPNUM_CDC_DATA, USBD_CDC_DATA_SIZE),
-
-    /* TUD_HID_DESCRIPTOR(ITF_NUM_HID, */
-                      /* USBD_STR_HID_NAME, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), */
-                         /* EPNUM_HID, USBD_HID_BUFSIZE, USBD_HID_POLL_INTERVAL), */
-    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID, USBD_STR_HID_NAME, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, 0x80 | EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, USBD_HID_POLL_INTERVAL)
+                         EPNUM_CDC_NOTIF, USBD_CDC_NOTIF_SIZE,
+                         EPNUM_CDC_OUT,
+                         EPNUM_CDC_IN, USBD_CDC_DATA_SIZE)
 };
 
 // ****************************************************************************
