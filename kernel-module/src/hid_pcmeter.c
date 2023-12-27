@@ -12,9 +12,13 @@
 #include <linux/hidraw.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <linux/workqueue.h>
 
 #define USB_VENDOR_ID_PC_METER_PICO 0x2e8a
 #define USB_DEVICE_ID_PC_METER_PICO 0xc011
+#define MAX_REPORT_SIZE		64
 
 enum hidpcmeter_report_type {
     RAW_REQUEST,
@@ -33,17 +37,44 @@ struct hidpcmeter_config {
 	const char		*short_name;
 	size_t			report_size;
 	enum hidpcmeter_report_type	report_type;
-	ssize_t (*write)(struct file *filp, const char __user *buf, size_t count,loff_t *f_pos);
+	ssize_t (*write)(struct hidpcmeter_device *ldev);
 };
+
+struct work_cont {
+	struct work_struct real_work;
+	int    arg;
+} work_cont;
 
 struct hidpcmeter_device {
 	const struct hidpcmeter_config *config;
 	struct hid_device          *hdev;
 	u8			               *buf;
 	struct mutex		       lock;
+	struct work_cont           hid_work;
 };
 
-#define MAX_REPORT_SIZE		64
+static void thread_function(struct work_struct *work);
+
+static void thread_function(struct work_struct *work_arg)
+{
+
+	/* set_current_state(TASK_UNINTERRUPTIBLE); */
+	if (!work_arg) goto exit;
+	printk(KERN_INFO "[Deferred work]=> PID: %d; NAME: %s\n", current->pid, current->comm);
+	struct work_cont *work_cont = container_of(work_arg, struct work_cont, real_work);
+	if (!work_cont) goto exit;
+	struct hidpcmeter_device* ldev = container_of(work_cont, struct hidpcmeter_device, hid_work);
+	if (!ldev) goto exit;
+	ldev->config->write(ldev);
+	set_current_state(TASK_INTERRUPTIBLE);
+	schedule_timeout(work_cont->arg * HZ); //Wait 1s
+	schedule_work(work_arg);
+	return;
+
+exit:
+	printk(KERN_INFO "Something is missing in worker %d %s", current->pid, current->comm);
+	return;
+}
 
 static int hidpcmeter_send(struct hidpcmeter_device *ldev, __u8 *buf)
 {
@@ -57,7 +88,7 @@ static int hidpcmeter_send(struct hidpcmeter_device *ldev, __u8 *buf)
 	 */
 	memcpy(ldev->buf, buf, ldev->config->report_size);
 
-	if (ldev->config->report_type == RAW_REQUEST) { // TODO do we even need RAW_REQUESTS?
+	if (ldev->config->report_type == RAW_REQUEST) {
 		ret = hid_hw_raw_request(ldev->hdev, buf[0], ldev->buf,
 					 ldev->config->report_size,
 					 HID_FEATURE_REPORT,
@@ -79,16 +110,17 @@ static int hidpcmeter_send(struct hidpcmeter_device *ldev, __u8 *buf)
 	return ret == ldev->config->report_size ? 0 : -EMSGSIZE;
 }
 
-static ssize_t pcmeter_pico_write(struct file *filp, const char __user *buf, size_t count,loff_t *f_pos)
+static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 {
-	__u8 mybuf[MAX_REPORT_SIZE] = {};
+	__u8 buf[MAX_REPORT_SIZE] = {};
 
 	// TODO for debug only. Later get actual mem and cpu data
-	mybuf[1] = 50;
-	mybuf[2] = 90;
+	buf[1] = 'C';
+	buf[2] = 80;
+	buf[3] = 'M';
+	buf[4] = 20;
 
-	return 0;
-	/* return hidpcmeter_send(rgb->ldev, buf); */
+	return hidpcmeter_send(ldev, buf);
 }
 
 static const struct hidpcmeter_config hidpcmeter_configs[] = {
@@ -105,7 +137,6 @@ static const struct hidpcmeter_config hidpcmeter_configs[] = {
 static int hidpcmeter_probe(struct hid_device *hdev, const struct hid_device_id *id)
 {
 	struct hidpcmeter_device *ldev;
-	unsigned int minor;
 	int ret, i;
 
 	ldev = devm_kzalloc(&hdev->dev, sizeof(*ldev), GFP_KERNEL);
@@ -144,25 +175,18 @@ static int hidpcmeter_probe(struct hid_device *hdev, const struct hid_device_id 
 		return ret;
 	}
 
+	INIT_WORK(&(ldev->hid_work.real_work), thread_function);
+	ldev->hid_work.arg = 1; // TODO get arg from commandline
+	schedule_work(&(ldev->hid_work.real_work));
+
 	hid_info(hdev, "%s initialized\n", ldev->config->name);
-
-	// TODO test
-	/* hid_device_io_start(hdev); */
-
-	__u8 mybuf[MAX_REPORT_SIZE] = {};
-	mybuf[1] = 'C';
-	mybuf[2] = 45;
-	mybuf[3] = 'M';
-	mybuf[4] = 90;
-	msleep(100);
-	hidpcmeter_send(ldev, mybuf);
 
 	return 0;
 }
 
 static void hidpcmeter_remove(struct hid_device *hdev)
 {
-	printk("module: removed!!!");
+	printk("removed!!!");
 	hid_hw_stop(hdev);
 }
 
