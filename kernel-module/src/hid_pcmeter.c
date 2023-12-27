@@ -40,39 +40,36 @@ struct hidpcmeter_config {
 	ssize_t (*write)(struct hidpcmeter_device *ldev);
 };
 
-struct work_cont {
-	struct work_struct real_work;
+struct hid_work {
+	struct work_struct work_arg;
+	struct hidpcmeter_device* ldev;
 	int    arg;
-} work_cont;
+};
 
 struct hidpcmeter_device {
 	const struct hidpcmeter_config *config;
 	struct hid_device          *hdev;
 	u8			               *buf;
 	struct mutex		       lock;
-	struct work_cont           hid_work;
+	bool connected;
 };
 
-static void thread_function(struct work_struct *work);
+static void thread_function(struct work_struct *work_arg);
 
 static void thread_function(struct work_struct *work_arg)
 {
-
-	/* set_current_state(TASK_UNINTERRUPTIBLE); */
-	if (!work_arg) goto exit;
-	printk(KERN_INFO "[Deferred work]=> PID: %d; NAME: %s\n", current->pid, current->comm);
-	struct work_cont *work_cont = container_of(work_arg, struct work_cont, real_work);
-	if (!work_cont) goto exit;
-	struct hidpcmeter_device* ldev = container_of(work_cont, struct hidpcmeter_device, hid_work);
-	if (!ldev) goto exit;
+	struct hid_work *hid_work = container_of(work_arg, struct hid_work, work_arg);
+	if (!hid_work) goto exit;
+	struct hidpcmeter_device* ldev = hid_work->ldev;
+	if (!ldev || !ldev->connected) goto exit;
 	ldev->config->write(ldev);
 	set_current_state(TASK_INTERRUPTIBLE);
-	schedule_timeout(work_cont->arg * HZ); //Wait 1s
+	schedule_timeout(hid_work->arg * HZ); //Wait 1s
 	schedule_work(work_arg);
 	return;
 
 exit:
-	printk(KERN_INFO "Something is missing in worker %d %s", current->pid, current->comm);
+	kfree(hid_work);
 	return;
 }
 
@@ -137,11 +134,13 @@ static const struct hidpcmeter_config hidpcmeter_configs[] = {
 static int hidpcmeter_probe(struct hid_device *hdev, const struct hid_device_id *id)
 {
 	struct hidpcmeter_device *ldev;
+	struct hid_work *hid_work;
 	int ret, i;
 
 	ldev = devm_kzalloc(&hdev->dev, sizeof(*ldev), GFP_KERNEL);
 	if (!ldev)
 		return -ENOMEM;
+	hid_set_drvdata(hdev, ldev);
 
 	ldev->buf = devm_kmalloc(&hdev->dev, MAX_REPORT_SIZE, GFP_KERNEL);
 	if (!ldev->buf)
@@ -174,10 +173,13 @@ static int hidpcmeter_probe(struct hid_device *hdev, const struct hid_device_id 
 			__func__);
 		return ret;
 	}
+	ldev->connected = true;
 
-	INIT_WORK(&(ldev->hid_work.real_work), thread_function);
-	ldev->hid_work.arg = 1; // TODO get arg from commandline
-	schedule_work(&(ldev->hid_work.real_work));
+	hid_work = kmalloc(sizeof(*hid_work), GFP_KERNEL);
+	INIT_WORK(&hid_work->work_arg, thread_function);
+	hid_work->ldev = ldev;
+	hid_work->arg = 1;
+	schedule_work(&hid_work->work_arg);
 
 	hid_info(hdev, "%s initialized\n", ldev->config->name);
 
@@ -186,7 +188,8 @@ static int hidpcmeter_probe(struct hid_device *hdev, const struct hid_device_id 
 
 static void hidpcmeter_remove(struct hid_device *hdev)
 {
-	printk("removed!!!");
+	struct hidpcmeter_device *ldev = hid_get_drvdata(hdev);
+	ldev->connected = false;
 	hid_hw_stop(hdev);
 }
 
