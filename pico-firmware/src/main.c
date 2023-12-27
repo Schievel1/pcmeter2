@@ -156,20 +156,19 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
   (void) report_id;
   (void) report_type;
 
-  for(int i = 0; i<bufsize; i++) {
-    switch (buffer[i]) {
-      case 'C':
-        //CPU
-        updateLastValueReceived(0, MIN(buffer[i+1], 100));
-        break;
-      case 'M':
-        //Memory
-        updateLastValueReceived(1, MIN(buffer[i+1], 100));
-        break;
+  /* NOTE: be aware that tinyusb cuts off the report ID
+   * for us in this function.
+   * So buffer[1] on PC side becomes buffer[0] here
+   */
+  for (int i = 0; i<2; i++) {
+    if (buffer[0] > 0) {
+      updateLastValueReceived(i, MIN(buffer[i], 100));
+      // NOTE more to come here ...
     }
-    updateLastTimeReceived();
   }
-  printf("HID got: %c%d%c%d\n", buffer);
+  updateLastTimeReceived();
+
+  printf("HID got: %d %d\n", buffer[0], buffer[1]);
   // echo back anything we received from host
   tud_hid_report(0, buffer, bufsize);
 }

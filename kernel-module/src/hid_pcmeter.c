@@ -59,8 +59,10 @@ static void thread_function(struct work_struct *work_arg);
 static void thread_function(struct work_struct *work_arg)
 {
 	struct hid_work *hid_work = container_of(work_arg, struct hid_work, work_arg);
+	struct hidpcmeter_device* ldev;
+
 	if (!hid_work) goto exit;
-	struct hidpcmeter_device* ldev = hid_work->ldev;
+	ldev = hid_work->ldev;
 	if (!ldev || !ldev->connected) goto exit;
 	ldev->config->write(ldev);
 	set_current_state(TASK_INTERRUPTIBLE);
@@ -112,10 +114,8 @@ static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 	__u8 buf[MAX_REPORT_SIZE] = {};
 
 	// TODO for debug only. Later get actual mem and cpu data
-	buf[1] = 'C';
-	buf[2] = 80;
-	buf[3] = 'M';
-	buf[4] = 20;
+	buf[1] = 80;
+	buf[2] = 20;
 
 	return hidpcmeter_send(ldev, buf);
 }
