@@ -6,7 +6,6 @@
  * Based on drivers/hid/hid-led.c
  */
 
-#define DEBUG
 #include "core.h"
 #include <linux/hid.h>
 #include <linux/hidraw.h>
@@ -43,7 +42,7 @@ struct hidpcmeter_config {
 struct hid_work {
 	struct work_struct work_arg;
 	struct hidpcmeter_device* ldev;
-	int    arg;
+	int    interval;
 };
 
 struct hidpcmeter_device {
@@ -53,6 +52,10 @@ struct hidpcmeter_device {
 	struct mutex		       lock;
 	bool connected;
 };
+
+/* send interval in ms */
+static int interval = 1000;
+module_param(interval,int,0660);
 
 static void thread_function(struct work_struct *work_arg);
 
@@ -66,7 +69,7 @@ static void thread_function(struct work_struct *work_arg)
 	if (!ldev || !ldev->connected) goto exit;
 	ldev->config->write(ldev);
 	set_current_state(TASK_INTERRUPTIBLE);
-	schedule_timeout(hid_work->arg * HZ); //Wait 1s
+	schedule_timeout(msecs_to_jiffies(hid_work->interval));
 	schedule_work(work_arg);
 	return;
 
@@ -178,7 +181,7 @@ static int hidpcmeter_probe(struct hid_device *hdev, const struct hid_device_id 
 	hid_work = kmalloc(sizeof(*hid_work), GFP_KERNEL);
 	INIT_WORK(&hid_work->work_arg, thread_function);
 	hid_work->ldev = ldev;
-	hid_work->arg = 1;
+	hid_work->interval = interval;
 	schedule_work(&hid_work->work_arg);
 
 	hid_info(hdev, "%s initialized\n", ldev->config->name);
