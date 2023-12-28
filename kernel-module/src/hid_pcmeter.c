@@ -14,6 +14,9 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/kernel_stat.h>
+#include <linux/cpumask.h>
+#include <linux/tick.h>
 
 #define USB_VENDOR_ID_PC_METER_PICO 0x2e8a
 #define USB_DEVICE_ID_PC_METER_PICO 0xc011
@@ -112,12 +115,57 @@ static int hidpcmeter_send(struct hidpcmeter_device *ldev, __u8 *buf)
 	return ret == ldev->config->report_size ? 0 : -EMSGSIZE;
 }
 
+static u64 my_get_idle_time(struct kernel_cpustat *kcs, int cpu)
+{
+	u64 idle, idle_usecs = -1ULL;
+
+	if (cpu_online(cpu))
+		idle_usecs = get_cpu_idle_time_us(cpu, NULL);
+
+	if (idle_usecs == -1ULL)
+		/* !NO_HZ or cpu offline so we can rely on cpustat.idle */
+		idle = kcs->cpustat[CPUTIME_IDLE];
+	else
+		idle = idle_usecs * NSEC_PER_USEC;
+
+	return idle;
+}
+
 static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 {
 	__u8 buf[MAX_REPORT_SIZE] = {};
+	struct kernel_cpustat kcpustat;
+
+	static u64 old_timestamp = 1;
+	static u64 old_cpu_idle = 1;
+	u64 idle = 0 ;
+	u64 timestamp = 0;
+	int cpu_percent = 0;
+	int i;
+
+	for_each_possible_cpu(i) {
+		struct kernel_cpustat kcpustat;
+		/* u64 *cpustat = kcpustat.cpustat; */
+		kcpustat_cpu_fetch(&kcpustat, i);
+		idle		+= my_get_idle_time(&kcpustat, i);
+	}
+	timestamp = ktime_get_ns();
+	// TODO get nr of CPU from NR_CPUS bitmap
+	cpu_percent = 100 - ((((idle - old_cpu_idle) / 24) *100 / (timestamp - old_timestamp)));
+	/* printk("old_cpu_idle: %llu", old_cpu_idle); */
+	/* printk("idle: %llu", idle); */
+	/* printk("old_timestamp: %llu", old_timestamp); */
+	/* printk("timestamp: %llu", timestamp); */
+	printk("NRCPU: %d", NR_CPUS);
+	printk("idlediff: %llu\n", (idle - old_cpu_idle) / 12);
+	printk("timediff: %llu", timestamp - old_timestamp);
+	printk("percent: %d", cpu_percent);
+
+	old_timestamp = timestamp;
+	old_cpu_idle = idle;
 
 	// TODO for debug only. Later get actual mem and cpu data
-	buf[1] = 80;
+	buf[1] = cpu_percent;
 	buf[2] = 20;
 
 	return hidpcmeter_send(ldev, buf);
