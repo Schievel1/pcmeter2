@@ -75,13 +75,13 @@
 
 #define CFG_TUD_HID             (1)
 
-#define CFG_TUD_HID_BUFSIZE     (16)
+#define CFG_TUD_HID_BUFSIZE     (64)
 
-#define CFG_HID_KEYBOARD        (1)
-#define CFG_HID_MOUSE           (1)
+#define CFG_HID_KEYBOARD        (0)
+#define CFG_HID_MOUSE           (0)
 #define CFG_HID_MOUSE_ABS       (0)
-#define CFG_HID_GAMEPAD         (1)
-#define CFG_HID_CONSUMER        (1)
+#define CFG_HID_GAMEPAD         (0)
+#define CFG_HID_CONSUMER        (0)
 
 /*
 #define REPORT_ID_KEYBOARD      (1)

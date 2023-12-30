@@ -147,28 +147,37 @@ uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t
   return 0;
 }
 
+#define SYSTEM_REPORT 0
+#define USER_REPORT 1
 // Invoked when received SET_REPORT control request or
 // received data on OUT endpoint ( Report ID = 0, Type = 0 )
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
 {
   // This example doesn't use multiple report and report ID
   (void) itf;
-  (void) report_id;
   (void) report_type;
-
   /* NOTE: be aware that tinyusb cuts off the report ID
    * for us in this function.
    * So buffer[1] on PC side becomes buffer[0] here
    */
-  for (int i = 0; i<2; i++) {
-    if (buffer[0] > 0) {
-      updateLastValueReceived(i, MIN(buffer[i], 100));
-      // NOTE more to come here ...
-    }
-  }
-  updateLastTimeReceived();
 
-  printf("HID got: %d %d\n", buffer[0], buffer[1]);
+  switch (buffer[0]) {
+    case SYSTEM_REPORT:
+      for (int i = 0; i<2; i++) {
+        if (buffer[i+1] > 0) {
+          updateLastValueReceived(i, MIN(buffer[i+1], 100));
+          /* NOTE more to come here ... */
+        }
+      }
+      updateLastTimeReceived();
+      printf("HID got system report: CPU %d MEM %d\n", buffer[1], buffer[2]);
+      break;
+    case USER_REPORT:
+      printf("HID got a user report: %s\n", buffer);
+      break;
+
+  }
+
   // echo back anything we received from host
   tud_hid_report(0, buffer, bufsize);
 }
