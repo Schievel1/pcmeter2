@@ -46,7 +46,8 @@ struct hidpcmeter_config {
 struct hid_work {
 	struct work_struct work_arg;
 	struct hidpcmeter_device* ldev;
-	int    interval;
+	int                       interval;
+	u64                       *cpu_last_idle;
 };
 
 struct hidpcmeter_device {
@@ -54,7 +55,8 @@ struct hidpcmeter_device {
 	struct hid_device          *hdev;
 	u8			               *buf;
 	struct mutex		       lock;
-	bool connected;
+	bool                       connected;
+	u64                        *cpu_last_idle;
 };
 
 /* send interval in ms */
@@ -78,6 +80,7 @@ static void thread_function(struct work_struct *work_arg)
 	return;
 
 exit:
+	kfree(hid_work->cpu_last_idle);
 	kfree(hid_work);
 	return;
 }
@@ -97,7 +100,7 @@ static int hidpcmeter_send(struct hidpcmeter_device *ldev, __u8 *buf)
 	if (ldev->config->report_type == RAW_REQUEST) {
 		ret = hid_hw_raw_request(ldev->hdev, buf[0], ldev->buf,
 					 ldev->config->report_size,
-					 HID_FEATURE_REPORT,
+					 HID_OUTPUT_REPORT,
 					 HID_REQ_SET_REPORT);
 	}
 	else if (ldev->config->report_type == OUTPUT_REPORT)
@@ -132,19 +135,16 @@ static u64 my_get_idle_time(struct kernel_cpustat *kcs, int cpu)
 	return idle;
 }
 
-static int get_nr_cpus(void)
-{
-	static int no_cpus = 0;
+static void update_cpu_last_idle(u64 cpu_last_idle[]) {
 	int i;
-
-	if (no_cpus == 0)
-		for_each_online_cpu(i) {
-			no_cpus++;
-		}
-	return no_cpus;
+	for_each_possible_cpu(i) {
+		struct kernel_cpustat kcpustat;
+		kcpustat_cpu_fetch(&kcpustat, i);
+		cpu_last_idle[i] = my_get_idle_time(&kcpustat, i);
+	}
 }
 
-static u8 get_cpu_load(void)
+static u8 get_cpu_load(struct hidpcmeter_device *ldev)
 {
 	struct kernel_cpustat kcpustat;
 	static u64 old_timestamp = 1;
@@ -155,12 +155,11 @@ static u8 get_cpu_load(void)
 	int i;
 
 	for_each_possible_cpu(i) {
-		struct kernel_cpustat kcpustat;
-		kcpustat_cpu_fetch(&kcpustat, i);
-		idle += my_get_idle_time(&kcpustat, i);
+		idle += ldev->cpu_last_idle[i];
 	}
+
 	timestamp = ktime_get_ns();
-	cpu_percent = 100 - ((((idle - old_cpu_idle) / get_nr_cpus()) * 100 / (timestamp - old_timestamp)));
+	cpu_percent = 100 - ((((idle - old_cpu_idle) / num_online_cpus()) * 100 / (timestamp - old_timestamp)));
 	if (cpu_percent < 0)
 		cpu_percent = 0;
 
@@ -179,12 +178,43 @@ static u8 get_mem_load(void)
 	return 100 - (meminfo.freeram * 100 / meminfo.totalram);
 }
 
+static u8 get_swap_load(void)
+{
+	struct sysinfo meminfo;
+
+	si_meminfo(&meminfo);
+
+	return 100 - (meminfo.totalswap * 100 / meminfo.freeswap);
+}
+
 static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 {
 	__u8 buf[MAX_REPORT_SIZE] = {};
+	int i = 0;
+	static u64 old_timestamp = 0;
+	u64 timestamp = 1;
 
-	buf[1] = get_cpu_load();
-	buf[2] = get_mem_load();
+
+	buf[1] = 0; /* driver data */
+	buf[2] = get_cpu_load(ldev);
+	buf[3] = get_mem_load();
+	/* buf[3] = get_swap_load(); */
+	buf[5] = num_online_cpus();
+
+	timestamp = ktime_get_ns();
+	for_each_online_cpu(i) {
+		/* exit loop when more CPUs than buffer space */
+		if (i == MAX_REPORT_SIZE - 6)
+			break;
+
+		struct kernel_cpustat kcpustat;
+		kcpustat_cpu_fetch(&kcpustat, i);
+		u64 idle = my_get_idle_time(&kcpustat, i);
+		buf[i+6] = 100 - ((idle - ldev->cpu_last_idle[i]) * 100 / (timestamp - old_timestamp));
+	}
+	old_timestamp = timestamp;
+
+	update_cpu_last_idle(ldev->cpu_last_idle);
 
 	return hidpcmeter_send(ldev, buf);
 }
@@ -244,10 +274,13 @@ static int hidpcmeter_probe(struct hid_device *hdev, const struct hid_device_id 
 	}
 	ldev->connected = true;
 
+	ldev->cpu_last_idle = kzalloc(num_possible_cpus() * sizeof(u64), GFP_KERNEL);
+
 	hid_work = kmalloc(sizeof(*hid_work), GFP_KERNEL);
 	INIT_WORK(&hid_work->work_arg, thread_function);
 	hid_work->ldev = ldev;
 	hid_work->interval = interval;
+	hid_work->cpu_last_idle = ldev->cpu_last_idle;
 	schedule_work(&hid_work->work_arg);
 
 	hid_info(hdev, "%s initialized\n", ldev->config->name);
