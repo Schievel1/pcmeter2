@@ -172,11 +172,13 @@ static u8 get_cpu_load(struct hidpcmeter_device *ldev)
 static u8 get_mem_load(void)
 {
 	struct sysinfo meminfo;
+	long available;
 
 	si_meminfo(&meminfo);
+	available = si_mem_available();
 
 	if (meminfo.totalram > 0)
-		return 100 - (meminfo.freeram * 100 / meminfo.totalram);
+		return 100 - (available * 100 / meminfo.totalram);
 	else
 		return 100;
 }
