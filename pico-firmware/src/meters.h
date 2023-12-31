@@ -10,4 +10,10 @@ void updateLastValueReceived(int idx, int val);
 void updateLastTimeReceived(void);
 long map(long x, long in_min, long in_max, long out_min, long out_max);
 
+enum {
+    CPU = 0,
+    MEM,
+    NUMBER_OF_METERS,
+};
+
 #endif // METERS_H_

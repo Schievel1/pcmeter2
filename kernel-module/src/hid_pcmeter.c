@@ -173,18 +173,6 @@ static u8 get_mem_load(void)
 		return 100;
 }
 
-static u8 get_swap_load(void)
-{
-	struct sysinfo meminfo;
-
-	si_meminfo(&meminfo);
-
-	if (meminfo.totalswap > 0)
-		return 100 - (meminfo.freeswap * 100 / meminfo.totalswap);
-	else
-		return 100;
-}
-
 static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 {
 	__u8 buf[MAX_REPORT_SIZE] = {};
@@ -198,8 +186,7 @@ static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 	buf[1] = 0; /* driver data */
 	buf[2] = get_cpu_load(ldev);
 	buf[3] = get_mem_load();
-	buf[4] = get_swap_load();
-	buf[5] = num_online_cpus();
+	buf[4] = num_online_cpus();
 
 	timestamp = ktime_get_ns();
 	for_each_online_cpu(i) {

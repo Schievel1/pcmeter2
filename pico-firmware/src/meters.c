@@ -14,6 +14,10 @@
 
     Developed and Tested on an Arduino Leonardo with IDE 1.8.5
 
+    Updated and ported to USB and Raspberry Pi Pico by Pascal Jaeger
+    http://www.leimstift.de
+    Email: pascal.jaeger at leimstift.de
+
     Serial communcation code from/based on Robin2's tutorial at:
     http://forum.arduino.cc/index.php?topic=396450.0
 
@@ -41,13 +45,10 @@
 #include "WS2812.pio.h"
 
 //Constants
-const int METER_PINS[2] = {11, 10};     // Meter output pins
+const int METER_PINS[NUMBER_OF_METERS] = {3, 4, 5};     // Meter output pins
 // Set this value to correct cheap meters that display wrong
 // also if you have 3V meters tune this down so it shows 3V at 100% CPU load
-const int METER_MAX[2] = {228, 228};    // Max value for meters
-const int GREEN_LEDS[2] = {4, 2};       // Green LED pins
-const int RED_LEDS[2] = {5, 3};         // Red LED pins
-const int RED_ZONE_PERC = 80;           // Percent at which LED goes from green to red
+const int METER_MAX[NUMBER_OF_METERS] = {228, 228, 228};    // Max value for meters
 const int METER_UPDATE_FREQ = 100;      // Frequency of meter updates in milliseconds
 const long SERIAL_TIMEOUT = 2000;       // How long to wait until serial "times out"
 #define READINGS_COUNT 20          // Number of readings to average for each meter
@@ -58,24 +59,21 @@ char receivedChars[numRecChars];        // Array for received serial data
 bool newData = false;                   // Indicates if new data has been received
 unsigned long lastSerialRecd = 0;       // Time last serial recd
 unsigned long lastMeterUpdate = 0;      // Time meters last updated
-int lastValueReceived[2] = {0, 0};      // Last value received
-int valuesRecd[2][READINGS_COUNT];      // Readings to be averaged
-int runningTotal[2] = {0, 0};           // Running totals
+int lastValueReceived[NUMBER_OF_METERS] = {0};      // Last value received
+int valuesRecd[NUMBER_OF_METERS][READINGS_COUNT];      // Readings to be averaged
+int runningTotal[NUMBER_OF_METERS] = {0};           // Running totals
 int valuesRecdIndex = 0;                // Index of current reading
 
-    WS2812 ledStrip(
-        2,            // Data line is connected to pin 0. (GP0)
-        24,         // Strip is 6 LEDs long.
-        pio0,               // Use PIO 0 for creating the state machine.
-        0,                  // Index of the state machine that will be created for controlling the LED strip
-                            // You can have 4 state machines per PIO-Block up to 8 overall.
-                            // See Chapter 3 in: https://datasheets.raspberrypi.org/rp2040/rp2040-datasheet.pdf
-        WS2812::FORMAT_GRB  // Pixel format used by the LED strip
-    );
-// Emulate Arduinos board_millis() function
-/* static uint32_t board_millis() { */
-    /* return to_ms_since_boot(get_absolute_time()); */
-/* } */
+WS2812 ledStrip(
+    2,            // Data line is connected to pin 0. (GP0)
+    24,         // Strip is 6 LEDs long.
+    pio0,               // Use PIO 0 for creating the state machine.
+    0,                  // Index of the state machine that will be created for controlling the LED strip
+                        // You can have 4 state machines per PIO-Block up to 8 overall.
+                        // See Chapter 3 in: https://datasheets.raspberrypi.org/rp2040/rp2040-datasheet.pdf
+    WS2812::FORMAT_GRB  // Pixel format used by the LED strip
+);
+
 
 // Arduino map function
 long map(long x, long in_min, long in_max, long out_min, long out_max) {
@@ -83,8 +81,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 }
 
 //Set Meter position
-static void setMeter(int meterPin, int perc, int meterMax)
-{
+static void setMeter(int meterPin, int perc, int meterMax) {
   //Map perc to proper meter position
   int pos = map(perc, 0, 100, 0, meterMax);
   pwm_set_gpio_level(meterPin, pos);
@@ -92,8 +89,7 @@ static void setMeter(int meterPin, int perc, int meterMax)
 
 
 //Set LED color
-static void setLED(int greenPin, int redPin, int perc, int redPerc)
-{
+static void setLED(int greenPin, int redPin, int perc, int redPerc) {
   int isGreen = (perc < redPerc);
   gpio_put(greenPin, isGreen);
   gpio_put(redPin, !isGreen);
@@ -119,46 +115,39 @@ static void setLEDStrip(uint8_t meteridx, uint8_t percent) {
     ledStrip.setPixelColor(i2, WS2812::RGB(r,g,b));
     ledStrip.setPixelColor(i3, WS2812::RGB(r,g,b));
 }
+
 //Max both meters on startup as a test
-static void meterStartup(void)
-{
- gpio_put(RED_LEDS[0], true);
- gpio_put(RED_LEDS[1], true);
+static void meterStartup(void) {
+ ledStrip.fill( WS2812::RGB(0, 0, 0) );
+ ledStrip.show();
  for (int i = 0; i<100; i++) {
-   setMeter(METER_PINS[0], i, METER_MAX[0]);
-   setMeter(METER_PINS[1], i, METER_MAX[1]);
+   setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
+   setMeter(METER_PINS[MEM], i, METER_MAX[MEM]);
    sleep_ms(5);
  }
  for (int i = 100; i>0; i--) {
-   setMeter(METER_PINS[0], i, METER_MAX[0]);
-   setMeter(METER_PINS[1], i, METER_MAX[1]);
+   setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
+   setMeter(METER_PINS[MEM], i, METER_MAX[MEM]);
    sleep_ms(15);
  }
- sleep_ms(500);
 }
 
 void meters_setup(void) {
-  //Setup pin modes
-    /* gpio_init(METER_PINS[0]); */
-    gpio_set_function(METER_PINS[0], GPIO_FUNC_PWM);
-    gpio_set_function(METER_PINS[1], GPIO_FUNC_PWM);
+    gpio_set_function(METER_PINS[CPU], GPIO_FUNC_PWM);
+    gpio_set_function(METER_PINS[MEM], GPIO_FUNC_PWM);
     uint slice_num[] = {
-      pwm_gpio_to_slice_num(METER_PINS[0]),
-      pwm_gpio_to_slice_num(METER_PINS[1])
+      pwm_gpio_to_slice_num(METER_PINS[CPU]),
+      pwm_gpio_to_slice_num(METER_PINS[MEM])
     };
-    pwm_set_wrap(slice_num[0], 254);
-    pwm_set_wrap(slice_num[1], 254);
-    pwm_set_enabled(slice_num[0], true);
-    pwm_set_enabled(slice_num[1], true);
-
-    ledStrip.fill( WS2812::RGB(0, 0, 0) );
-    ledStrip.show();
+    pwm_set_wrap(slice_num[CPU], 254);
+    pwm_set_wrap(slice_num[MEM], 254);
+    pwm_set_enabled(slice_num[CPU], true);
+    pwm_set_enabled(slice_num[MEM], true);
 
     //Init values Received array
-    for (int counter = 0; counter < READINGS_COUNT; counter++)
-    {
-        valuesRecd[0][counter] = 0;
-        valuesRecd[1][counter] = 0;
+    for (int counter = 0; counter < READINGS_COUNT; counter++) {
+        valuesRecd[CPU][counter] = 0;
+        valuesRecd[MEM][counter] = 0;
     }
 
     meterStartup();
@@ -177,41 +166,32 @@ void meters_receiveSerialData(void)
     char endMarker = '\r';
     char rc;
 
-    while ((rc = getchar_timeout_us(0)) != ENDSTDIN && newData == false)
-      {
-        if (rc != endMarker)
-        {
+    while ((rc = getchar_timeout_us(0)) != ENDSTDIN && newData == false) {
+      if (rc != endMarker) {
           receivedChars[ndx] = rc;
           ndx++;
-          if (ndx >= numRecChars)
-          {
+          if (ndx >= numRecChars) {
             ndx = numRecChars - 1;
           }
-        }
-        else
-        {
+      } else {
           receivedChars[ndx] = '\0'; // terminate the string
           ndx = 0;
           newData = true;
           printf("ACM got: %s\n", receivedChars);
-        }
-
-    }
+      }
+  }
 }
 
-void meters_updateStats(void)
-{
-  if (newData == true)
-  {
-    switch (receivedChars[0])
-    {
+void meters_updateStats(void) {
+  if (newData == true) {
+    switch (receivedChars[0]) {
       case 'C':
         //CPU
-        lastValueReceived[0] = MIN(atoi(&receivedChars[1]), 100);
+        lastValueReceived[CPU] = MIN(atoi(&receivedChars[1]), 100);
         break;
       case 'M':
         //Memory
-        lastValueReceived[1] = MIN(atoi(&receivedChars[1]), 100);
+        lastValueReceived[MEM] = MIN(atoi(&receivedChars[1]), 100);
         break;
     }
 
@@ -232,15 +212,14 @@ void updateLastTimeReceived(void) {
 }
 
 //Update meters and running stats
-void meters_updateMeters(void)
-{
+void meters_updateMeters(void) {
   unsigned long currentMillis = board_millis();
 
   if (currentMillis - lastMeterUpdate > METER_UPDATE_FREQ)
   {
     //Update both meters
     int i;
-    for(i = 0; i < 2; i++) {
+    for(i = 0; i < NUMBER_OF_METERS; i++) {
       int perc = 0;
 
       //Based on https://www.arduino.cc/en/Tutorial/Smoothing
@@ -265,34 +244,26 @@ void meters_updateMeters(void)
 
 //Move needles back and forth to show no data is
 //being received. Stop once serial data rec'd again.
-void meters_screenSaver(void)
-{
+void meters_screenSaver(void) {
   if (board_millis() - lastSerialRecd > SERIAL_TIMEOUT) {
     static int aPos = 0;
     int bPos = 0;
     static int incAmt = 0;
     static unsigned long lastSSUpdate = 0;
 
-    //Turn off all LEDs
-    gpio_put(GREEN_LEDS[0], false);
-    gpio_put(GREEN_LEDS[1], false);
-    gpio_put(RED_LEDS[0], false);
-    gpio_put(RED_LEDS[1], false);
-
     char in = getchar_timeout_us(0);
-    if (in == ENDSTDIN || in < 0) { // TODO add USB timeout here
+    if (in == ENDSTDIN || in < 0) {
       unsigned long currentMillis = board_millis();
 
       //B meter position is opposite of A meter position
       bPos = 100 - aPos;
 
       //Move needles
-      setMeter(METER_PINS[0], aPos, METER_MAX[0]);
-      setMeter(METER_PINS[1], bPos, METER_MAX[1]);
+      setMeter(METER_PINS[CPU], aPos, METER_MAX[CPU]);
+      setMeter(METER_PINS[MEM], bPos, METER_MAX[MEM]);
 
       //Update every 100ms
-      if (currentMillis - lastSSUpdate > 100)
-      {
+      if (currentMillis - lastSSUpdate > 100) {
         lastSSUpdate = board_millis();
 
         //Change meter direction if needed.

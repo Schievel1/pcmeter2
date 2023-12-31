@@ -32,32 +32,6 @@
 #include "tusb.h"
 #include "meters.hpp"
 
-/* This example demonstrate HID Generic raw Input & Output.
- * It will receive data from Host (In endpoint) and echo back (Out endpoint).
- * HID Report descriptor use vendor for usage page (using template TUD_HID_REPORT_DESC_GENERIC_INOUT)
- *
- * There are 2 ways to test the sketch
- * 1. Using nodejs
- * - Install nodejs and npm to your PC
- *
- * - Install excellent node-hid (https://github.com/node-hid/node-hid) by
- *   $ npm install node-hid
- *
- * - Run provided hid test script
- *   $ node hid_test.js
- *
- * 2. Using python
- * - Install `hid` package (https://pypi.org/project/hid/) by
- *   $ pip install hid
- *
- * - hid package replies on hidapi (https://github.com/libusb/hidapi) for backend,
- *   which already available in Linux. However on windows, you may need to download its dlls from their release page and
- *   copy it over to folder where python is installed.
- *
- * - Run provided hid test script to send and receive data to this device.
- *   $ python3 hid_test.py
- */
-
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
 //--------------------------------------------------------------------+
@@ -78,15 +52,13 @@ static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
 void led_blinking_task(void);
 
 /*------------- MAIN -------------*/
-int main(void)
-{
+int main(void) {
   board_init();
   stdio_init_all();
   tusb_init();
   meters_setup();
 
-  while (1)
-  {
+  while (1) {
     tud_task(); // tinyusb device task
     led_blinking_task();
 
@@ -160,17 +132,16 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
    * for us in this function.
    * So buffer[1] on PC side becomes buffer[0] here
    */
-
   switch (buffer[0]) {
     case SYSTEM_REPORT:
-      for (int i = 0; i<2; i++) {
+      for (int i = 0; i < NUMBER_OF_METERS; i++) {
         if (buffer[i+1] > 0) {
           updateLastValueReceived(i, MIN(buffer[i+1], 100));
           /* NOTE more to come here ... */
         }
       }
       updateLastTimeReceived();
-      printf("HID got system report: CPU %d MEM %d\n", buffer[1], buffer[2]);
+      printf("HID got system report: CPU %d MEM %d SWP %d\n", buffer[1], buffer[2], buffer[3]);
       break;
     case USER_REPORT:
       printf("HID got a user report: %s\n", buffer);
