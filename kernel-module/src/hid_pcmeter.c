@@ -210,13 +210,13 @@ static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 	timestamp = ktime_get_ns();
 	for_each_online_cpu(i) {
 		/* exit loop when more CPUs than buffer space */
-		if (i == MAX_REPORT_SIZE - 6)
+		if (i == MAX_REPORT_SIZE - 10)
 			break;
 
 		struct kernel_cpustat kcpustat;
 		kcpustat_cpu_fetch(&kcpustat, i);
 		u64 idle = my_get_idle_time(&kcpustat, i);
-		buf[i+6] = 100 - ((idle - ldev->cpu_last_idle[i]) * 100 / (timestamp - old_timestamp));
+		buf[i+10] = 100 - ((idle - ldev->cpu_last_idle[i]) * 100 / (timestamp - old_timestamp));
 	}
 	old_timestamp = timestamp;
 
