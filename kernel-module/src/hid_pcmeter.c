@@ -35,28 +35,23 @@ enum hidpcmeter_type {
 struct hidpcmeter_device;
 
 struct hidpcmeter_config {
-	enum hidpcmeter_type	type;
-	const char		*name;
-	const char		*short_name;
-	size_t			report_size;
+	enum hidpcmeter_type      	type;
+	const char		            *name;
+	const char          		*short_name;
+	size_t          			report_size;
 	enum hidpcmeter_report_type	report_type;
 	ssize_t (*write)(struct hidpcmeter_device *ldev);
-};
-
-struct hid_work {
-	struct work_struct work_arg;
-	int                interval;
-	u64                *cpu_last_idle;
 };
 
 struct hidpcmeter_device {
 	const struct hidpcmeter_config *config;
 	struct hid_device              *hdev;
-	struct hid_work                hid_work;
-	u8			                   *buf;
-	struct mutex		           lock;
 	bool                           connected;
+	u8			                   *buf;
 	u64                            *cpu_last_idle;
+	struct work_struct             work_arg;
+	int                            interval;
+	struct mutex		           lock;
 	spinlock_t                     slock;
 };
 
@@ -66,12 +61,9 @@ module_param(interval,int,0660);
 
 static void pcmeter_work_function(struct work_struct *work_arg)
 {
-	struct hid_work *hid_work = container_of(work_arg, struct hid_work, work_arg);
-	struct hidpcmeter_device* ldev;
+	struct hidpcmeter_device* ldev = container_of(work_arg, struct hidpcmeter_device, work_arg);
 	unsigned long flags;
 
-	if (!hid_work) return;
-	ldev = container_of(hid_work, struct hidpcmeter_device, hid_work);
 	if (!ldev) return;
 	spin_lock_irqsave(&ldev->slock, flags);
 	if (!ldev->connected) return ;
@@ -79,7 +71,7 @@ static void pcmeter_work_function(struct work_struct *work_arg)
 
 	ldev->config->write(ldev);
 	set_current_state(TASK_INTERRUPTIBLE);
-	schedule_timeout(msecs_to_jiffies(hid_work->interval));
+	schedule_timeout(msecs_to_jiffies(ldev->interval));
 	schedule_work(work_arg);
 }
 
@@ -282,16 +274,9 @@ static int hidpcmeter_probe(struct hid_device *hdev, const struct hid_device_id 
 		goto error_hw_stop;
 	}
 
-	/* hid_work = devm_kmalloc(&hdev->dev, sizeof(*hid_work), GFP_KERNEL); */
-	/* if (!hid_work) { */
-		/* ret = -ENOMEM; */
-		/* goto error_hw_stop; */
-	/* } */
-
-	INIT_WORK(&ldev->hid_work.work_arg, pcmeter_work_function);
-	ldev->hid_work.interval = interval;
-	ldev->hid_work.cpu_last_idle = ldev->cpu_last_idle;
-	schedule_work(&ldev->hid_work.work_arg);
+	INIT_WORK(&ldev->work_arg, pcmeter_work_function);
+	ldev->interval = interval;
+	schedule_work(&ldev->work_arg);
 
 	hid_info(hdev, "%s initialized\n", ldev->config->name);
 
@@ -311,8 +296,8 @@ static void hidpcmeter_remove(struct hid_device *hdev)
 	ldev->connected = false;
 	spin_unlock_irqrestore(&ldev->slock, flags);
 
-	cancel_work_sync(&ldev->hid_work.work_arg);
-	flush_work(&ldev->hid_work.work_arg);
+	cancel_work_sync(&ldev->work_arg);
+	flush_work(&ldev->work_arg);
 	hid_hw_stop(hdev);
 }
 
