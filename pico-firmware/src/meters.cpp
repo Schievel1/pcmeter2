@@ -34,9 +34,11 @@
 #include "pico/stdlib.h"
 #include "pico.h"
 #include "hardware/timer.h"
-#include "meters.h"
+#include "meters.hpp"
 #include "hardware/pwm.h"
 #include "bsp/board.h"
+#include "WS2812.hpp"
+#include "WS2812.pio.h"
 
 //Constants
 const int METER_PINS[2] = {11, 10};     // Meter output pins
@@ -61,6 +63,15 @@ int valuesRecd[2][READINGS_COUNT];      // Readings to be averaged
 int runningTotal[2] = {0, 0};           // Running totals
 int valuesRecdIndex = 0;                // Index of current reading
 
+    WS2812 ledStrip(
+        2,            // Data line is connected to pin 0. (GP0)
+        24,         // Strip is 6 LEDs long.
+        pio0,               // Use PIO 0 for creating the state machine.
+        0,                  // Index of the state machine that will be created for controlling the LED strip
+                            // You can have 4 state machines per PIO-Block up to 8 overall.
+                            // See Chapter 3 in: https://datasheets.raspberrypi.org/rp2040/rp2040-datasheet.pdf
+        WS2812::FORMAT_GRB  // Pixel format used by the LED strip
+    );
 // Emulate Arduinos board_millis() function
 /* static uint32_t board_millis() { */
     /* return to_ms_since_boot(get_absolute_time()); */
@@ -88,7 +99,26 @@ static void setLED(int greenPin, int redPin, int perc, int redPerc)
   gpio_put(redPin, !isGreen);
 }
 
+static void map_percent_green_to_red (uint8_t percent, uint8_t *r, uint8_t *g, uint8_t *b) {
+  long byte_percent = map(percent, 0, 100, 0, 255);
+  *r = byte_percent;
+  *g = 255 - byte_percent;
+  *b = 0;
+}
 
+static void setLEDStrip(uint8_t meteridx, uint8_t percent) {
+    uint8_t r,g,b, i0, i1, i2, i3;
+    map_percent_green_to_red(percent, &r,&g,&b);
+
+    i0 = meteridx * 4;
+    i1 = meteridx * 4 + 1;
+    i2 = meteridx * 4 + 2;
+    i3 = meteridx * 4 + 3;
+    ledStrip.setPixelColor(i0, WS2812::RGB(r,g,b));
+    ledStrip.setPixelColor(i1, WS2812::RGB(r,g,b));
+    ledStrip.setPixelColor(i2, WS2812::RGB(r,g,b));
+    ledStrip.setPixelColor(i3, WS2812::RGB(r,g,b));
+}
 //Max both meters on startup as a test
 static void meterStartup(void)
 {
@@ -121,14 +151,8 @@ void meters_setup(void) {
     pwm_set_enabled(slice_num[0], true);
     pwm_set_enabled(slice_num[1], true);
 
-    gpio_init(GREEN_LEDS[0]);
-    gpio_set_dir(GREEN_LEDS[0], GPIO_OUT);
-    gpio_init(RED_LEDS[0]);
-    gpio_set_dir(RED_LEDS[0], GPIO_OUT);
-    gpio_init(GREEN_LEDS[1]);
-    gpio_set_dir(GREEN_LEDS[1], GPIO_OUT);
-    gpio_init(RED_LEDS[1]);
-    gpio_set_dir(RED_LEDS[1], GPIO_OUT);
+    ledStrip.fill( WS2812::RGB(0, 0, 0) );
+    ledStrip.show();
 
     //Init values Received array
     for (int counter = 0; counter < READINGS_COUNT; counter++)
@@ -226,8 +250,9 @@ void meters_updateMeters(void)
       perc = runningTotal[i] / READINGS_COUNT;
 
       setMeter(METER_PINS[i], perc, METER_MAX[i]);
-      setLED(GREEN_LEDS[i], RED_LEDS[i], perc, RED_ZONE_PERC);
+      setLEDStrip(i, perc);
     }
+    ledStrip.show();
 
     //Advance index
     valuesRecdIndex = valuesRecdIndex + 1;

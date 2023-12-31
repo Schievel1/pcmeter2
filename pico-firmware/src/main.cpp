@@ -30,7 +30,7 @@
 #include "pico/stdlib.h"
 #include "bsp/board.h"
 #include "tusb.h"
-#include "meters.h"
+#include "meters.hpp"
 
 /* This example demonstrate HID Generic raw Input & Output.
  * It will receive data from Host (In endpoint) and echo back (Out endpoint).
