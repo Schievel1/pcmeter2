@@ -38,17 +38,17 @@
 #include "pico/stdlib.h"
 #include "pico.h"
 #include "hardware/timer.h"
-#include "meters.hpp"
+#include "meters.h"
 #include "hardware/pwm.h"
 #include "bsp/board.h"
-#include "WS2812.hpp"
+#include "ws2812.h"
 #include "WS2812.pio.h"
 
 //Constants
-const int METER_PINS[NUMBER_OF_METERS] = {3, 4, 5};     // Meter output pins
+const int METER_PINS[NUMBER_OF_METERS] = {3, 4};     // Meter output pins
 // Set this value to correct cheap meters that display wrong
 // also if you have 3V meters tune this down so it shows 3V at 100% CPU load
-const int METER_MAX[NUMBER_OF_METERS] = {228, 228, 228};    // Max value for meters
+const int METER_MAX[NUMBER_OF_METERS] = {228, 228};    // Max value for meters
 const int METER_UPDATE_FREQ = 100;      // Frequency of meter updates in milliseconds
 const long SERIAL_TIMEOUT = 2000;       // How long to wait until serial "times out"
 #define READINGS_COUNT 20          // Number of readings to average for each meter
@@ -64,16 +64,7 @@ int valuesRecd[NUMBER_OF_METERS][READINGS_COUNT];      // Readings to be average
 int runningTotal[NUMBER_OF_METERS] = {0};           // Running totals
 int valuesRecdIndex = 0;                // Index of current reading
 
-WS2812 ledStrip(
-    2,            // Data line is connected to pin 0. (GP0)
-    24,         // Strip is 6 LEDs long.
-    pio0,               // Use PIO 0 for creating the state machine.
-    0,                  // Index of the state machine that will be created for controlling the LED strip
-                        // You can have 4 state machines per PIO-Block up to 8 overall.
-                        // See Chapter 3 in: https://datasheets.raspberrypi.org/rp2040/rp2040-datasheet.pdf
-    WS2812::FORMAT_GRB  // Pixel format used by the LED strip
-);
-
+ws2812* led_strip;
 
 // Arduino map function
 long map(long x, long in_min, long in_max, long out_min, long out_max) {
@@ -85,14 +76,6 @@ static void setMeter(int meterPin, int perc, int meterMax) {
   //Map perc to proper meter position
   int pos = map(perc, 0, 100, 0, meterMax);
   pwm_set_gpio_level(meterPin, pos);
-}
-
-
-//Set LED color
-static void setLED(int greenPin, int redPin, int perc, int redPerc) {
-  int isGreen = (perc < redPerc);
-  gpio_put(greenPin, isGreen);
-  gpio_put(redPin, !isGreen);
 }
 
 static void map_percent_green_to_red (uint8_t percent, uint8_t *r, uint8_t *g, uint8_t *b) {
@@ -110,26 +93,26 @@ static void setLEDStrip(uint8_t meteridx, uint8_t percent) {
     i1 = meteridx * 4 + 1;
     i2 = meteridx * 4 + 2;
     i3 = meteridx * 4 + 3;
-    ledStrip.setPixelColor(i0, WS2812::RGB(r,g,b));
-    ledStrip.setPixelColor(i1, WS2812::RGB(r,g,b));
-    ledStrip.setPixelColor(i2, WS2812::RGB(r,g,b));
-    ledStrip.setPixelColor(i3, WS2812::RGB(r,g,b));
+    set_led_grb(led_strip, i0, urgb_grbu32(r, g, b));
+    set_led_grb(led_strip, i1, urgb_grbu32(r, g, b));
+    set_led_grb(led_strip, i2, urgb_grbu32(r, g, b));
+    set_led_grb(led_strip, i3, urgb_grbu32(r, g, b));
 }
 
 //Max both meters on startup as a test
 static void meterStartup(void) {
- ledStrip.fill( WS2812::RGB(0, 0, 0) );
- ledStrip.show();
- for (int i = 0; i<100; i++) {
-   setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
-   setMeter(METER_PINS[MEM], i, METER_MAX[MEM]);
-   sleep_ms(5);
- }
- for (int i = 100; i>0; i--) {
-   setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
-   setMeter(METER_PINS[MEM], i, METER_MAX[MEM]);
-   sleep_ms(15);
- }
+  fill_led_grb(led_strip, urgb_grbu32(0, 0, 0));
+  ws2812_show(led_strip);
+  for (int i = 0; i<100; i++) {
+    setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
+    setMeter(METER_PINS[MEM], i, METER_MAX[MEM]);
+    sleep_ms(5);
+  }
+  for (int i = 100; i>0; i--) {
+    setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
+    setMeter(METER_PINS[MEM], i, METER_MAX[MEM]);
+    sleep_ms(15);
+  }
 }
 
 void meters_setup(void) {
@@ -149,6 +132,8 @@ void meters_setup(void) {
         valuesRecd[CPU][counter] = 0;
         valuesRecd[MEM][counter] = 0;
     }
+
+    led_strip = ws2812_initialize(pio0, 0, 2, 24, false);
 
     meterStartup();
 
@@ -231,7 +216,7 @@ void meters_updateMeters(void) {
       setMeter(METER_PINS[i], perc, METER_MAX[i]);
       setLEDStrip(i, perc);
     }
-    ledStrip.show();
+    ws2812_show(led_strip);
 
     //Advance index
     valuesRecdIndex = valuesRecdIndex + 1;

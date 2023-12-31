@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.13)
 # note: this must happen before project()
 include(pico-sdk/pico_sdk_init.cmake)
 
-project(my_project)
+project(pcmeter-pico)
 
 # initialize the Raspberry Pi Pico SDK
 pico_sdk_init()
@@ -15,10 +15,10 @@ add_executable(pcmeter-pico)
 pico_generate_pio_header(pcmeter-pico ${CMAKE_CURRENT_LIST_DIR}/src/WS2812.pio)
 
 target_sources(pcmeter-pico PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/main.c
         ${CMAKE_CURRENT_LIST_DIR}/src/usb_descriptors.c
-        ${CMAKE_CURRENT_LIST_DIR}/src/meters.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/WS2812.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/meters.c
+        ${CMAKE_CURRENT_LIST_DIR}/src/ws2812.c
         )
 
 # Make sure TinyUSB can find tusb_config.h

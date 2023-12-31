@@ -30,7 +30,9 @@
 #include "pico/stdlib.h"
 #include "bsp/board.h"
 #include "tusb.h"
-#include "meters.hpp"
+#include "meters.h"
+#include "WS2812.pio.h"
+#include "ws2812.h"
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
@@ -141,7 +143,7 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
         }
       }
       updateLastTimeReceived();
-      printf("HID got system report: CPU %d MEM %d SWP %d\n", buffer[1], buffer[2], buffer[3]);
+      printf("HID got system report: CPU %d MEM %d NOCPUS %d\n", buffer[1], buffer[2], buffer[3]);
       break;
     case USER_REPORT:
       printf("HID got a user report: %s\n", buffer);
