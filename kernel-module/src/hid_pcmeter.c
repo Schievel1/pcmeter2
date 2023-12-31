@@ -201,6 +201,8 @@ static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 	int i = 0;
 	static u64 old_timestamp = 0;
 	u64 timestamp = 1;
+	struct kernel_cpustat kcpustat;
+	u64 idle;
 
 
 	buf[1] = 0; /* driver data */
@@ -214,10 +216,8 @@ static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 		/* exit loop when more CPUs than buffer space */
 		if (i == MAX_REPORT_SIZE - 10)
 			break;
-
-		struct kernel_cpustat kcpustat;
 		kcpustat_cpu_fetch(&kcpustat, i);
-		u64 idle = my_get_idle_time(&kcpustat, i);
+		idle = my_get_idle_time(&kcpustat, i);
 		buf[i+10] = 100 - ((idle - ldev->cpu_last_idle[i]) * 100 / (timestamp - old_timestamp));
 	}
 	old_timestamp = timestamp;
