@@ -175,7 +175,10 @@ static u8 get_mem_load(void)
 
 	si_meminfo(&meminfo);
 
-	return 100 - (meminfo.freeram * 100 / meminfo.totalram);
+	if (meminfo.totalram > 0)
+		return 100 - (meminfo.freeram * 100 / meminfo.totalram);
+	else
+		return 100;
 }
 
 static u8 get_swap_load(void)
@@ -184,7 +187,10 @@ static u8 get_swap_load(void)
 
 	si_meminfo(&meminfo);
 
-	return 100 - (meminfo.totalswap * 100 / meminfo.freeswap);
+	if (meminfo.totalswap > 0)
+		return 100 - (meminfo.freeswap * 100 / meminfo.totalswap);
+	else
+		return 100;
 }
 
 static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
@@ -198,7 +204,7 @@ static ssize_t pcmeter_pico_write(struct hidpcmeter_device *ldev)
 	buf[1] = 0; /* driver data */
 	buf[2] = get_cpu_load(ldev);
 	buf[3] = get_mem_load();
-	/* buf[3] = get_swap_load(); */
+	buf[4] = get_swap_load();
 	buf[5] = num_online_cpus();
 
 	timestamp = ktime_get_ns();
