@@ -32,12 +32,8 @@
     If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <sys/param.h>
 #include "pico/stdlib.h"
-#include "pico.h"
-#include "hardware/timer.h"
 #include "meters.h"
 #include "hardware/pwm.h"
 #include "bsp/board.h"

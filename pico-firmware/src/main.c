@@ -25,14 +25,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "pico/stdlib.h"
 #include "bsp/board.h"
 #include "tusb.h"
 #include "meters.h"
-/* #include "WS2812.pio.h" */
-/* #include "ws2812.h" */
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
