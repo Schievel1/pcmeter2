@@ -41,8 +41,8 @@
 #include "meters.h"
 #include "hardware/pwm.h"
 #include "bsp/board.h"
-#include "ws2812.h"
 #include "WS2812.pio.h"
+#include "ws2812.h"
 
 //Constants
 const int METER_PINS[NUMBER_OF_METERS] = {3, 4};     // Meter output pins
@@ -64,7 +64,10 @@ int valuesRecd[NUMBER_OF_METERS][READINGS_COUNT];      // Readings to be average
 int runningTotal[NUMBER_OF_METERS] = {0};           // Running totals
 int valuesRecdIndex = 0;                // Index of current reading
 
-ws2812* led_strip;
+#define WS2812_PIN 2
+#define WS2812_LEN 24
+#define WS2812_IS_RGBW false
+struct WS2812* led_strip;
 
 // Arduino map function
 long map(long x, long in_min, long in_max, long out_min, long out_max) {
@@ -93,15 +96,15 @@ static void setLEDStrip(uint8_t meteridx, uint8_t percent) {
     i1 = meteridx * 4 + 1;
     i2 = meteridx * 4 + 2;
     i3 = meteridx * 4 + 3;
-    set_led_grb(led_strip, i0, urgb_grbu32(r, g, b));
-    set_led_grb(led_strip, i1, urgb_grbu32(r, g, b));
-    set_led_grb(led_strip, i2, urgb_grbu32(r, g, b));
-    set_led_grb(led_strip, i3, urgb_grbu32(r, g, b));
+    ws2812_set_led(led_strip, i0, ws2812_urgb_grbu32(r, g, b));
+    ws2812_set_led(led_strip, i1, ws2812_urgb_grbu32(r, g, b));
+    ws2812_set_led(led_strip, i2, ws2812_urgb_grbu32(r, g, b));
+    ws2812_set_led(led_strip, i3, ws2812_urgb_grbu32(r, g, b));
 }
 
 //Max both meters on startup as a test
 static void meterStartup(void) {
-  fill_led_grb(led_strip, urgb_grbu32(0, 0, 0));
+  ws2812_fill(led_strip, ws2812_urgb_grbu32(0, 0, 0));
   ws2812_show(led_strip);
   for (int i = 0; i<100; i++) {
     setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
@@ -133,7 +136,7 @@ void meters_setup(void) {
         valuesRecd[MEM][counter] = 0;
     }
 
-    led_strip = ws2812_initialize(pio0, 0, 2, 24, false);
+    led_strip = ws2812_initialize(pio0, 0, WS2812_PIN, WS2812_LEN, WS2812_IS_RGBW);
 
     meterStartup();
 

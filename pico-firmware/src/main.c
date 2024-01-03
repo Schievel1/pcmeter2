@@ -31,8 +31,8 @@
 #include "bsp/board.h"
 #include "tusb.h"
 #include "meters.h"
-#include "WS2812.pio.h"
-#include "ws2812.h"
+/* #include "WS2812.pio.h" */
+/* #include "ws2812.h" */
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
