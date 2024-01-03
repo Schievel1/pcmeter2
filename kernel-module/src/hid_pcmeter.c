@@ -136,7 +136,6 @@ static void update_cpu_last_idle(u64 cpu_last_idle[]) {
 
 static u8 get_cpu_load(struct hidpcmeter_device *ldev)
 {
-	struct kernel_cpustat kcpustat;
 	static u64 old_timestamp = 1;
 	static u64 old_cpu_idle = 1;
 	u64 idle = 0 ;
