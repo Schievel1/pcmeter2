@@ -1,3 +1,148 @@
 #+title: Readme
 
+* Licensing
 For the license see the header of the respective files
+
+* Overview
+This is the software that goes onto the RP2040.
+Without modification it has one WS2812 strip of 8 LEDs at pin 2, the CPU%-Meter on pin 3 and the MEM%-Meter on pin 4.
+
+* Building and installation
+Get an arm-none-eabi toolchain (arm-none-eabi-gcc and arm-none-eabi-g++) and cmake. For Ubuntu and other Debian based systems this is usually something like
+#+begin_src bash
+sudo apt install cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
+#+end_src
+
+For Gentoo it is
+#+begin_src bash
+crossdev --stable --target arm-none-eabi -s4 -P -v # notice the s4, we want C++ here
+#+end_src
+
+Then do
+#+begin_src bash
+git clone https://github.com/Schievel1/pcmeter2.git
+cd pcmeter2
+# and pull the pico-sdk and its submodule
+git submodule update --init --recursive
+#+end_src
+
+Then try to build
+#+begin_src
+cd pico-firmware
+mkdir build
+cd build
+cmake ..
+make pcmeter-pico
+#+end_src
+
+If that succeeds you should have a pcmeter-pico.uf2 file in the build directory. Then hold down the BOOTSEL (or just BOOT) switch of the pico while plugging its USB in. It should boot into the flash mode and show up as a USB flash drive on the PC. Put the pcmeter-pico.uf2 onto that flash drive. It will disconnect automatically and boot the firmware.
+
+* Customization
+** Additional meters
+You can put new meters into the firmware very easily. Lets we want to add a temperature meter.
+In ~meters.h~ put the new purpose of the meter in the nameless enum:
+#+begin_src C
+enum {
+    CPU = 0,
+    MEM = 1,
+    TEMP = 2, // this is new
+    NUMBER_OF_METERS, // do not add your meter after this line
+};
+#+end_src
+In ~meters.c~ add the pin where you want to connect the meter to the array METER_PINS:
+#+begin_src C
+const int METER_PINS[NUMBER_OF_METERS] = {3, 4, 5}; // I added pin 5 for my TEMP meter here.
+#+end_src
+The RP2040 has a maximum output voltage of 3.3V, while those meters show 100% at 3V. (Giving them 3.3V wont break them though)
+So to limit the maximum output of the pi, those 0-3.3V are mapped to the METER_MAX array with byte representation. (So 0-3.3V is 0-255 here). However, you can now do some calculations to find out what value is 3V but those cheap meters are not very accurate. So its best to set it to something around 230 and fine tune later for each individual meter.
+#+begin_src C
+const int METER_MAX[NUMBER_OF_METERS] = {228, 228, 230}; // I added 230 for the TEMP meter here
+#+end_src
+Inside ~main.c~ edit the function ~tud_hid_set_report_cb()~
+If you want to display something on that meter from record 0 (the one that comes from the kernel module) edit the ~case SYSTEM_REPORT~. For example if you want to display the number of CPUs on my temp meter (now that is quite silly, but well this whole project is) look up the position of that byte from the readme of the kernel module and call ~updateLastValueReceived(TEMP, MIN(buffer[X], 100));~ where X is the index of the data in the buffer.
+Notice that the Software on the Pico expects the data to be 0-100 in all cases. So this is the right place to do some limitation and scaling. (e.g. I have a 20 core CPU so I scaled the data from the receiving buffer by 5)
+Example:
+#+begin_src C
+#define SYSTEM_REPORT 0
+#define USER_REPORT 1
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
+{
+  // This example doesn't use multiple report and report ID
+  (void) itf;
+  (void) report_type;
+  /* NOTE: be aware that tinyusb cuts off the report ID
+   * for us in this function.
+   * So buffer[1] on PC side becomes buffer[0] here
+   */
+  switch (buffer[0]) {
+    case SYSTEM_REPORT:
+      for (int i = 0; i < NUMBER_OF_METERS; i++) {
+        if (buffer[i+1] > 0) {
+          updateLastValueReceived(i, MIN(buffer[i+1], 100));
+          /* NOTE more to come here ... */
+        }
+      updateLastValueReceived(TEMP, MIN(buffer[3], 100) * 5);
+      }
+      updateLastTimeReceived();
+#ifdef DEBUG
+      for (uint8_t i; i < bufsize; i++)
+        printf("HID got system report: 0x%02x", buffer[i]);
+      printf("\n")
+#endif
+      break;
+    case USER_REPORT:
+#ifdef DEBUG
+      for (uint8_t i; i < bufsize; i++)
+        printf("HID got system report: 0x%02x", buffer[i]);
+      printf("\n")
+#endif
+      break;
+
+  }
+
+  // echo back anything we received from host
+  tud_hid_report(0, buffer, bufsize);
+}
+#+end_src
+
+If you want to send and use data via your own program (or the program I am going to write eventually) use this example, where the temp you want to display would be in the report at buffer[7]:
+#+begin_src C
+#define SYSTEM_REPORT 0
+#define USER_REPORT 1
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
+{
+  // This example doesn't use multiple report and report ID
+  (void) itf;
+  (void) report_type;
+  /* NOTE: be aware that tinyusb cuts off the report ID
+   * for us in this function.
+   * So buffer[1] on PC side becomes buffer[0] here
+   */
+  switch (buffer[0]) {
+    case SYSTEM_REPORT:
+      for (int i = 0; i < NUMBER_OF_METERS; i++) {
+        if (buffer[i+1] > 0) {
+          updateLastValueReceived(i, MIN(buffer[i+1], 100));
+          /* NOTE more to come here ... */
+        }
+      }
+      updateLastTimeReceived();
+#ifdef DEBUG
+      for (uint8_t i; i < bufsize; i++)
+        printf("HID got system report: 0x%02x", buffer[i]);
+      printf("\n")
+#endif
+      break;
+    case USER_REPORT:
+      updateLastValueReceived(TEMP, MIN(buffer[7], 100) * 5);
+#ifdef DEBUG
+      for (uint8_t i; i < bufsize; i++)
+        printf("HID got system report: 0x%02x", buffer[i]);
+      printf("\n")
+#endif
+      break;
+  }
+  // echo back anything we received from host
+  tud_hid_report(0, buffer, bufsize);
+}
+#+end_src
