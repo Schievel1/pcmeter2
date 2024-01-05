@@ -1,6 +1,7 @@
 TARGET := hid_pcmeter
 SRCDIR := src
 KERNEL := /lib/modules/$(shell uname -r)/build
+MODDESTDIR := /lib/modules/$(shell uname -r)/kernel/drivers/hid/
 
 obj-m := $(TARGET).o
 $(TARGET)-y += $(SRCDIR)/hid_pcmeter.o
@@ -16,3 +17,11 @@ module:
 
 clean:
 	make -C $(KERNEL) M=$(PWD) clean
+
+install:
+	install -p -m 644 $(TARGET).ko  $(MODDESTDIR)
+	/sbin/depmod -a $(shell uname -r)
+
+uninstall:
+	rm -f $(MODDESTDIR)/$(TARGET).ko
+	/sbin/depmod -a $(shell uname -r)
