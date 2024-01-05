@@ -1,5 +1,7 @@
 #+title: Readme
 
+
+
 * Overview
 This a Raspberry Pi Pico (RP2040) version of the [[https://www.swvincent.com/pcmeter/][PCmeter2 by Scott W. Vincent]]. He has excellent documentation written for this thing, so look up his page.
 
@@ -10,6 +12,10 @@ The USB hid report is 64 bytes long and can be multiplexed. The first report (bu
 This is because even though the Linux Kernel should know everything about the system, a Linux kernel module does not have access to every symbol in the Linux kernel. Also when it comes to temp sensors systems are quite different, so a kernel module covering every use case is not viable.
 
 You can find more info about the software and how to customize it in their respective folders.
+
+[[file:img/IMG_2700.JPG]]
+
+Yes, I was too lazy to build the case and print the background of the meters yet.
 
 * Licensing
 Since this consists in part of the USB example from the Pico SDK, Scott W. Vincents Arduino code and my own additions I kept the files where I had code from other people as input under their respective license even though I added to those files heavily. Only the ws2812 'library', which is of my own making, is licensed under GPL2.
