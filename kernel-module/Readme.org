@@ -1,0 +1,85 @@
+#+title: Readme
+
+* Overview
+This is the kernel module that calculates and sends the CPU and memory usage data to the pcmeter-pico.
+The kernel has no way to make other interesting data like swap usage available for a module, therefore this only sends the overall CPU usage, the memory usage, the number of CPU cores and the usage of every single CPU core (as long as there not more than 54 cores) to the pico. For anything else, write you own program that send a report to the hidraw device. (e.g. /dev/hidraw3) that has a 1 at the second byte.
+
+* Installation
+Since kernel modules need to be built against the individual version of the Linux kernel, otherwise they wont know where to hook into (see binary compatibility for further reading on this) a kernel module can hardly be provided as a binary. They need to be built on each individual users PC.
+Thankfully, building a kernel module is quite straightforward but the downside is, that you need to rebuild the module with every kernel update.
+
+** Setup
+*** Dependencies
+To build kernel modules we need the kernel-headers for the kernel we are running. Find out which kernel version we are running using ~uname -v~.
+On Debian based systems and such, the headers can be installed using
+#+begin_src bash
+sudo apt-get install linux-headers-<the kernel version from uname -v without, e.g. 6.6.9> build-essential
+#+end_src
+Also build-essential gets us the toolchain to build.
+On Fedora the package is called ~kernel-headers-<the version>~ and on Gentoo... well Gentoo users have their system ready to build a kernel at any time anyway.
+
+*** Building and installing
+Clone this repository if you haven't already:
+#+begin_src bash
+git clone https://github.com/Schievel1/pcmeter2.git
+#+end_src
+
+Go into the directory and build:
+#+begin_src bash
+cd pcmeter2/kernel-module
+make
+#+end_src
+
+Thats all. Now, install the module:
+#+begin_src bash
+sudo make install
+#+end_src
+
+*** Loading the module
+Once it is installed, to load the module simply run
+#+begin_src bash
+sudo modprobe hid_pcmeter
+#+end_src
+Unload similarly with
+#+begin_src bash
+sudo modprobe -r hid_pcmeter
+#+end_src
+
+To load the module at every start, put the line ~hid_pcmeter~ into ~/etc/modules~. Create the file if it's neccessary. There are several other ways to load modules at startup, e.g. udev rules or systemd-modules-load.
+
+*** Option sending interval
+Usually the kernel is sending data to Pico every second. With the slow analogue meters this is usually sufficient.
+However, it is possible to set the sending interval via argument when loading the kernel module.
+E.g. to send the data every 500ms (while still in the kernel-module folder of this repo and the module built)
+#+begin_src bash
+sudo insmod hid_pcmeter.ko interval=500
+#+end_src
+
+To automate that when loading the installed module using the ~modprobe~ command, put a file named ~hid_pcmeter.conf~ in ~/etc/modprobe.d/~ with this content:
+#+begin_src
+options hid_pcmeter interval=500
+#+end_src
+
+* Data of the send report
+The data of the report send by the kernel module consists of the following
+
+| Byte | Purpose                                         |
+|------+-------------------------------------------------|
+|    0 | Always 0, HID report number for hid raw devices |
+|    1 | 0, system report identifier                     |
+|    2 | overall CPU load                                |
+|    3 | memory usage                                    |
+|    4 | number of online CPUs                           |
+|    5 | res.                                            |
+|    6 | res.                                            |
+|    7 | res.                                            |
+|    8 | res.                                            |
+|    9 | res.                                            |
+|   10 | CPU load of CPU core 0                          |
+|   11 | CPU load of CPU core 1                          |
+|    x | CPU load of CPU core x-10                       |
+|   63 | CPU load of CPU core 53                         |
+|------+-------------------------------------------------|
+
+The driver checks for online CPUs for every message it sends, therefore be aware if you do CPU hotplugging and say you have 3 CPUs and unplug number 1, the corresponding byte 11 will not go to 0, instead it will shift all the following CPUs one byte to the front.
+This is a major flaw, but then again the intersection between people who do CPU hotplugging and people wanting this pcmeter thingy is not that huge, I guess.

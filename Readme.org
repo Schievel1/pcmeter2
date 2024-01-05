@@ -1,0 +1,56 @@
+#+title: Readme
+
+* Overview
+This a Raspberry Pi Pico (RP2040) version of the [[https://www.swvincent.com/pcmeter/][PCmeter2 by Scott W. Vincent]]. He has excellent documentation written for this thing, so look up his page.
+
+However, Vincent wrote the Software for the Arduino, and I only have Raspberry Pi Picos left. Besides, I needed a good reason to explore writing kernel modules. (I know this is not what in OS is for, but well...)
+
+The software on the Pico is in the directory [[file:pico-firmware/][pico firmware]], it can be easily modified to fit your own needs. The Pico gets its data either via serial communication of via USB hid. The serial communication is meant for debugging and can only take CPU and memory data yet. (But can be easily extended).
+The USB hid report is 64 bytes long and can be multiplexed. The first report (buffer[1] of the report is 0) is sent by the kernel module and consists the overall CPU usage, the overall memory usage, the number of online CPUs and the CPU usage of each core. However, even when using the kernel module you could still send your own data additionally to the Pico by setting buffer[1] to 1.
+This is because even though the Linux Kernel should know everything about the system, a Linux kernel module does not have access to every symbol in the Linux kernel. Also when it comes to temp sensors systems are quite different, so a kernel module covering every use case is not viable.
+
+You can find more info about the software and how to customize it in their respective folders.
+
+* Licensing
+Since this consists in part of the USB example from the Pico SDK, Scott W. Vincents Arduino code and my own additions I kept the files where I had code from other people as input under their respective license even though I added to those files heavily. Only the ws2812 'library', which is of my own making, is licensed under GPL2.
+
+* Material
+The bare minimum that is needed  for this is
+- Raspberry Pi Pico (or similar, I use cheap boards from China, but the original Pico is already quite cheap)
+- Analogue Meters 0-3V, at least one for the CPU, but 2 is even better. Or maybe even more if you want to show more data. I have [[https://www.aliexpress.com/item/1005005650076623.html?gatewayAdapt=glo2deu][this]], but really anything 0-3V works. Some current measurements could work as well, if you put a fitting resistor into the circuit. (just calculate the resistance R = 3.3V / (the max current of your meter) but be aware the RP2040 can't output unlimited current.)
+- [[https://www.aliexpress.com/item/4001331197520.html][WS2812 Led Strip]]. If you buy one with 60 LEDs per meter with the meters from above exactly four LEDS will fit under the width of a voltmeter. With 30 LEDs per meter it's only two.
+
+
+* Wiring
+I prepared the software of the Pico so that the WS2812 data in is at pin 2 of the pico, CPU%-Meter is connected to pin 3 and memory meter is at pin 4.
+
+#+begin_src
+NOTE: If you look from the backside onto the meters, the pin an the right is GND
+
+                                 RP2040
+                                 +-------------------+
+                                 |GP0    +-----+ VBUS|----------- WS2812 VIN
+                                 |GP1    | USB | VSYS|
+                                 |GND    +-----+  GND|----------- WS2812 GND
+          WS2812 DI -------------|GP2          3V3_EN|
+          Meter CPU -------------|GP3         3V3_OUT|
+          Meter MEM -------------|GP4        ADC_VREF|
+                                 |GP5            GP28|
+          Meter CPU GND ---------|GND             GND|
+                                 |GP6            GP27|
+                                 |GP7            GP26|
+                                 |GP8             RUN|
+                                 |GP9            GP22|
+          Meter MEM GND ---------|GND             GND|
+                                 |GP10           GP21|
+                                 |GP11           GP20|
+                                 |GP12           GP19|
+                                 |GP13           GP18|
+                                 |GND             GND|
+                                 |GP14           GP17|
+                                 |GP15           GP16|
+                                 +-------------------+
+
+#+end_src
+
+The rest of the pins is free for additional meters. Every RP2040 pin is suitable for PWM.
