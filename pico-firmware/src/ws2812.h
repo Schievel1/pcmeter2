@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Pascal Jaeger, 2023 */
+
 #ifndef WS2812_H_
 #define WS2812_H_
 

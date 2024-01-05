@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Pascal Jaeger, 2023 */
+
 #include <stdlib.h>
 #ifdef DEBUG
  #include <stdio.h>
