@@ -60,9 +60,10 @@ int valuesRecd[NUMBER_OF_METERS][READINGS_COUNT];      // Readings to be average
 int runningTotal[NUMBER_OF_METERS] = {0};           // Running totals
 int valuesRecdIndex = 0;                // Index of current reading
 
+// Values for WS2812 LED strip
 #define WS2812_PIN 2
-#define WS2812_LEN 24
 #define WS2812_IS_RGBW false
+const int WS2812_LEN = 4 * NUMBER_OF_METERS;
 struct WS2812* led_strip;
 
 // Arduino map function
@@ -103,47 +104,43 @@ static void meterStartup(void) {
   ws2812_fill(led_strip, ws2812_urgb_grbu32(0, 0, 0));
   ws2812_show(led_strip);
   for (int i = 0; i<100; i++) {
-    setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
-    setMeter(METER_PINS[MEM], i, METER_MAX[MEM]);
+    for (uint8_t j = 0; j < NUMBER_OF_METERS; j++)
+      setMeter(METER_PINS[j], i, METER_MAX[j]);
     sleep_ms(5);
   }
   for (int i = 100; i>0; i--) {
-    setMeter(METER_PINS[CPU], i, METER_MAX[CPU]);
-    setMeter(METER_PINS[MEM], i, METER_MAX[MEM]);
-    sleep_ms(15);
+    for (uint8_t j = 0; j < NUMBER_OF_METERS; j++)
+      setMeter(METER_PINS[j], i, METER_MAX[j]);
+    sleep_ms(5);
   }
 }
 
 void meters_setup(void) {
-    gpio_set_function(METER_PINS[CPU], GPIO_FUNC_PWM);
-    gpio_set_function(METER_PINS[MEM], GPIO_FUNC_PWM);
-    uint slice_num[] = {
-      pwm_gpio_to_slice_num(METER_PINS[CPU]),
-      pwm_gpio_to_slice_num(METER_PINS[MEM])
-    };
-    pwm_set_wrap(slice_num[CPU], 254);
-    pwm_set_wrap(slice_num[MEM], 254);
-    pwm_set_enabled(slice_num[CPU], true);
-    pwm_set_enabled(slice_num[MEM], true);
+    uint* slice_num = malloc(NUMBER_OF_METERS * sizeof(uint));
+    for (uint8_t j = 0; j < NUMBER_OF_METERS; j++) {
+      gpio_set_function(METER_PINS[j], GPIO_FUNC_PWM);
+      gpio_set_function(METER_PINS[j], GPIO_FUNC_PWM);
+      slice_num[j] = pwm_gpio_to_slice_num(METER_PINS[j]),
+      pwm_set_wrap(slice_num[j], 254);
+      pwm_set_enabled(slice_num[j], true);
+      pwm_set_enabled(slice_num[j], true);
 
-    //Init values Received array
-    for (int counter = 0; counter < READINGS_COUNT; counter++) {
-        valuesRecd[CPU][counter] = 0;
-        valuesRecd[MEM][counter] = 0;
+      //Init values Received array
+      for (int counter = 0; counter < READINGS_COUNT; counter++)
+        valuesRecd[j][counter] = 0;
     }
 
     led_strip = ws2812_initialize(pio0, 0, WS2812_PIN, WS2812_LEN, WS2812_IS_RGBW);
 
     meterStartup();
 
-  //Get times started
-  lastMeterUpdate = board_millis();
-  lastSerialRecd = board_millis();
+    //Get times started
+    lastMeterUpdate = board_millis();
+    lastSerialRecd = board_millis();
 }
 
 #define ENDSTDIN 255
-void meters_receiveSerialData(void)
-{
+void meters_receiveSerialData(void) {
     // This is the recvWithEndMarker() function
     // from Robin2's serial data tutorial
     static uint8_t ndx = 0;
@@ -245,8 +242,12 @@ void meters_screenSaver(void) {
       bPos = 100 - aPos;
 
       //Move needles
-      setMeter(METER_PINS[CPU], aPos, METER_MAX[CPU]);
-      setMeter(METER_PINS[MEM], bPos, METER_MAX[MEM]);
+      for (uint8_t j = 0; j < NUMBER_OF_METERS; j+=2) {
+        setMeter(METER_PINS[j], aPos, METER_MAX[j]);
+      }
+      for (uint8_t j = 1; j < NUMBER_OF_METERS; j+=2) {
+        setMeter(METER_PINS[j], bPos, METER_MAX[j]);
+      }
 
       //Update every 100ms
       if (currentMillis - lastSSUpdate > 100) {

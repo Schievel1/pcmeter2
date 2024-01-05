@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Pascal Jaeger, 2023 */
+
 #ifndef METERS_H_
 #define METERS_H_
 
@@ -12,7 +15,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 enum {
     CPU = 0,
-    MEM,
+    MEM = 1,
     NUMBER_OF_METERS,
 };
 
