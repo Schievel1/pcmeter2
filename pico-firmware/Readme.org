@@ -65,15 +65,17 @@ Example:
 #+begin_src C
 #define SYSTEM_REPORT 0
 #define USER_REPORT 1
+// Invoked when received SET_REPORT control request or
+// received data on OUT endpoint ( Report ID = 0, Type = 0 )
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
 {
   // This example doesn't use multiple report and report ID
   (void) itf;
   (void) report_type;
   /* NOTE: be aware that tinyusb cuts off the report ID
-   * for us in this function.
-   * So buffer[1] on PC side becomes buffer[0] here
-   */
+   ,* for us in this function.
+   ,* So buffer[1] on PC side becomes buffer[0] here
+   ,*/
   switch (buffer[0]) {
     case SYSTEM_REPORT:
       for (int i = 0; i < NUMBER_OF_METERS; i++) {
@@ -81,25 +83,30 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
           updateLastValueReceived(i, MIN(buffer[i+1], 100));
           /* NOTE more to come here ... */
         }
-      updateLastValueReceived(TEMP, MIN(buffer[3], 100) * 5);
+        if (buffer[3] > 0 ) // this line is new
+          updateLastValueReceived(TEMP, MIN(buffer[3], 100) * 5); // so is this
       }
       updateLastTimeReceived();
 #ifdef DEBUG
-      for (uint8_t i; i < bufsize; i++)
-        printf("HID got system report: 0x%02x", buffer[i]);
-      printf("\n");
+      printf("HID got system report:\n");
+      for (uint8_t i = 0; i < bufsize; i+=16) {
+        for (uint8_t j = 0; j < 16; j++)
+          printf("[%02d]: 0x%02x ", i+j, buffer[i+j]);
+        printf("\n");
+      }
 #endif
       break;
     case USER_REPORT:
 #ifdef DEBUG
-      for (uint8_t i; i < bufsize; i++)
-        printf("HID got system report: 0x%02x", buffer[i]);
-      printf("\n");
+      printf("HID got user report:\n");
+      for (uint8_t i = 0; i < bufsize; i+=16) {
+        for (uint8_t j = 0; j < 16; j++)
+          printf("[%02d]: 0x%02x ", i+j, buffer[i+j]);
+        printf("\n");
+      }
 #endif
       break;
-
   }
-
   // echo back anything we received from host
   tud_hid_report(0, buffer, bufsize);
 }
@@ -109,15 +116,17 @@ If you want to send and use data via your own program (or the program I am going
 #+begin_src C
 #define SYSTEM_REPORT 0
 #define USER_REPORT 1
+// Invoked when received SET_REPORT control request or
+// received data on OUT endpoint ( Report ID = 0, Type = 0 )
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
 {
   // This example doesn't use multiple report and report ID
   (void) itf;
   (void) report_type;
   /* NOTE: be aware that tinyusb cuts off the report ID
-   * for us in this function.
-   * So buffer[1] on PC side becomes buffer[0] here
-   */
+   ,* for us in this function.
+   ,* So buffer[1] on PC side becomes buffer[0] here
+   ,*/
   switch (buffer[0]) {
     case SYSTEM_REPORT:
       for (int i = 0; i < NUMBER_OF_METERS; i++) {
@@ -128,17 +137,24 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
       }
       updateLastTimeReceived();
 #ifdef DEBUG
-      for (uint8_t i; i < bufsize; i++)
-        printf("HID got system report: 0x%02x", buffer[i]);
-      printf("\n");
+      printf("HID got system report:\n");
+      for (uint8_t i = 0; i < bufsize; i+=16) {
+        for (uint8_t j = 0; j < 16; j++)
+          printf("[%02d]: 0x%02x ", i+j, buffer[i+j]);
+        printf("\n");
+      }
 #endif
       break;
     case USER_REPORT:
-      updateLastValueReceived(TEMP, MIN(buffer[7], 100) * 5);
+        if (buffer[3] > 0 ) // this line is new
+          updateLastValueReceived(TEMP, MIN(buffer[7], 100) * 5); // so is this
 #ifdef DEBUG
-      for (uint8_t i; i < bufsize; i++)
-        printf("HID got system report: 0x%02x", buffer[i]);
-      printf("\n");
+      printf("HID got user report:\n");
+      for (uint8_t i = 0; i < bufsize; i+=16) {
+        for (uint8_t j = 0; j < 16; j++)
+          printf("[%02d]: 0x%02x ", i+j, buffer[i+j]);
+        printf("\n");
+      }
 #endif
       break;
   }
