@@ -161,7 +161,9 @@ void meters_receiveSerialData(void)
           receivedChars[ndx] = '\0'; // terminate the string
           ndx = 0;
           newData = true;
+#ifdef DEBUG
           printf("ACM got: %s\n", receivedChars);
+#endif
       }
   }
 }

@@ -87,14 +87,14 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
 #ifdef DEBUG
       for (uint8_t i; i < bufsize; i++)
         printf("HID got system report: 0x%02x", buffer[i]);
-      printf("\n")
+      printf("\n");
 #endif
       break;
     case USER_REPORT:
 #ifdef DEBUG
       for (uint8_t i; i < bufsize; i++)
         printf("HID got system report: 0x%02x", buffer[i]);
-      printf("\n")
+      printf("\n");
 #endif
       break;
 
@@ -130,7 +130,7 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
 #ifdef DEBUG
       for (uint8_t i; i < bufsize; i++)
         printf("HID got system report: 0x%02x", buffer[i]);
-      printf("\n")
+      printf("\n");
 #endif
       break;
     case USER_REPORT:
@@ -138,11 +138,19 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
 #ifdef DEBUG
       for (uint8_t i; i < bufsize; i++)
         printf("HID got system report: 0x%02x", buffer[i]);
-      printf("\n")
+      printf("\n");
 #endif
       break;
   }
   // echo back anything we received from host
   tud_hid_report(0, buffer, bufsize);
 }
+#+end_src
+
+* Debug support
+To print out the data being received over serial, compile this with DEBUG defined (uncomment at start auf ~main.c~)
+Then listen to ~/dev/ttyACMx~ using any serial terminal you want.
+E.g.
+#+begin_src bash
+minicom -b 115200 -o -D /dev/ttyACM0
 #+end_src

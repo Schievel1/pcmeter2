@@ -23,6 +23,11 @@
  *
  */
 
+/* #define DEBUG */
+#ifdef DEBUG
+ #warning "Build with debug output over serial"
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -140,14 +145,26 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
         }
       }
       updateLastTimeReceived();
-      printf("HID got system report: CPU %d MEM %d NOCPUS %d\n", buffer[1], buffer[2], buffer[3]);
+#ifdef DEBUG
+      printf("HID got system report:\n");
+      for (uint8_t i = 0; i < bufsize; i+=16) {
+        for (uint8_t j = 0; j < 16; j++)
+          printf("[%02d]: 0x%02x ", i+j, buffer[i+j]);
+        printf("\n");
+      }
+#endif
       break;
     case USER_REPORT:
-      printf("HID got a user report: %s\n", buffer);
+#ifdef DEBUG
+      printf("HID got user report:\n");
+      for (uint8_t i = 0; i < bufsize; i+=16) {
+        for (uint8_t j = 0; j < 16; j++)
+          printf("[%02d]: 0x%02x ", i+j, buffer[i+j]);
+        printf("\n");
+      }
+#endif
       break;
-
   }
-
   // echo back anything we received from host
   tud_hid_report(0, buffer, bufsize);
 }
