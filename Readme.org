@@ -1,7 +1,4 @@
 #+title: Readme
-
-
-
 * Overview
 This a Raspberry Pi Pico (RP2040) version of the [[https://www.swvincent.com/pcmeter/][PCmeter2 by Scott W. Vincent]]. He has excellent documentation written for this thing, so look up his page.
 

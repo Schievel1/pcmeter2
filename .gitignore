@@ -4,3 +4,5 @@
 tmp/
 
 pico-firmware/build/
+
+pc-meter-daemon/target/
