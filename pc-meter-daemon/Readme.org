@@ -2,8 +2,7 @@
 
 * Overview
 This is a Rust program, that collects system info data and sends it over to the pc-meter-pico via USB hidraw.
-It can be used with the [[../kernel-module][kernel-module]] simultaneously, when the kernel is sending the [[file:~/dev/pcmeter-pico/kernel-module/Readme.org::Data of the sent report][Data of the sent report]]
-and the and this program sends only the user-report. With the ~-s / --system~ flag this program also sends the system report, so the kernel module is not needed anymore.
+It can be used with the [[https://github.com/Schievel1/pcmeter2/tree/main/kernel-module][kernel module]] simultaneously, when the kernel is sending the [[https://github.com/Schievel1/pcmeter2/tree/main/kernel-module#data-of-the-sent-report][system report]] and this program sends only the user-report. With the ~-s / --system~ flag this program also sends the system report, so the kernel module is not needed anymore.
 
 ** Daemons
 On Linux
@@ -33,7 +32,7 @@ To set those flags for the daemon, edit ~/etc/conf.d/pc-meterd~  (when on openRC
 
 * Data of the reports
 ** System report
-[[file:~/dev/pcmeter-pico/kernel-module/Readme.org::Data of the sent report][Kernel module readme]]
+[[https://github.com/Schievel1/pcmeter2/blob/main/kernel-module/Readme.org#data-of-the-sent-report][Kernel module readme]]
 
 ** User report
 The data of the user report consists of the following
