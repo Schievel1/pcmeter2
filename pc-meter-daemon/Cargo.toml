@@ -2,6 +2,7 @@
 name = "pc-meterd"
 version = "0.1.0"
 edition = "2021"
+license = "GPL-2"
 
 [dependencies]
 hidapi = "2.4.1"
