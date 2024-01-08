@@ -1,0 +1,15 @@
+# Copyright 2024 Pascal Jaeger
+# Distributed under the terms of the GNU General Public License v2
+[Unit]
+Description=Send system data to pc-meter-pico USB HID device
+
+[Service]
+Type=simple
+LogLevelMax=notice
+# Optional arguments:
+#  -i, --interval <INTERVAL>  Length of pause between each time the data is sent to the PC-Meter (ms) [default: 1000]
+#  -s, --system               Send the system report (conflicts with kernel module)
+ExecStart=/usr/bin/pc-meterd --system
+
+[Install]
+WantedBy=multi-user.target

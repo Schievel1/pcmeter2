@@ -1,0 +1,9 @@
+#!/sbin/openrc-run
+# Copyright 2024 Pascal Jaeger
+# Distributed under the terms of the GNU General Public License v2
+
+name="pc-meter daemon"
+command="/usr/bin/pc-meterd"
+command_args="$optional_args"
+pidfile="/run/${RC_SVCNAME}.pid"
+command_background=true

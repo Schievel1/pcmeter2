@@ -1,6 +1,6 @@
 use clap::Parser;
 use hidapi::HidApi;
-use pc_meter_daemon::{send_system_report, send_user_report};
+use pc_meterd::{send_system_report, send_user_report};
 use std::{thread, time};
 use sysinfo::{Components, Disks, System};
 
@@ -10,7 +10,7 @@ const PID: u16 = 0xc011;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Length of pause between each time the data is sent to the PC-Meter
+    /// Length of pause between each time the data is sent to the PC-Meter (ms)
     #[arg(short = 'i', long, default_value_t = 1000)]
     pub interval: u16,
     #[arg(short = 's', long, default_value_t = false)]
