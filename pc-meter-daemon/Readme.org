@@ -21,7 +21,7 @@ sudo make install
 #+end_src
 
 * Customization
-Pc-meterd can send the system report with CPU and memory data with the ~-s / --system~ flag and with the ~-i / --interval~ flag the pauses between sending can the changed.
+~pc-meterd~ can send the system report with CPU and memory data with the ~-s / --system~ flag and with the ~-i / --interval~ flag the pauses between sending can the changed.
 
 To set those flags for the daemon, edit ~/etc/conf.d/pc-meterd~  (when on openRC) or run ~sudo systemctl edit pc-meterd~ (on systemd).
 
@@ -48,5 +48,6 @@ The data of the user report consists of the following
 | 20-39 | temperature of each component                   |
 |-------+-------------------------------------------------|
 
-* Components
-The component list and their position in the data, that is send to the pico can be listed with the ~-c / --components~ flag.
+*** Individual data for each system
+Not every system is the same. For example we can not know what the disks are, their order their device names.
+Using the flags ~-c / --components~ and ~-d / --disks~ the disks and components can be displayed including their position in the buffer.

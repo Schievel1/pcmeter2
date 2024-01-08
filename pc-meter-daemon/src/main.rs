@@ -19,6 +19,9 @@ struct Args {
     #[arg(short = 'c', long, default_value_t = false)]
     /// Print the components list with buffer positions and exit
     pub components: bool,
+    #[arg(short = 'd', long, default_value_t = false)]
+    /// Print the disks list with buffer positions and exit
+    pub disks: bool,
 }
 
 fn main() {
@@ -30,11 +33,18 @@ fn main() {
     let mut comp = Components::new_with_refreshed_list();
     let mut disks = Disks::new_with_refreshed_list();
 
-    // comp.refresh();
     if args.components {
         let mut i = 20;
         for component in comp.iter() {
             println!("buf[{i}]: {component:?}");
+            i += 1;
+        }
+        return;
+    }
+    if args.disks {
+        let mut i = 10;
+        for disk in disks.iter() {
+            println!("buf[{i}]: {disk:?}");
             i += 1;
         }
         return;
