@@ -15,7 +15,7 @@ LIB_DIR = $(DESTDIR)$(PREFIX)/lib
 BIN_DIR = $(DESTDIR)$(PREFIX)/bin
 MAN_DIR = $(SHARE_DIR)/man
 
-.PHONY: build install uninstall clean help
+.PHONY: build install uninstall
 
 build:
 	cargo build --release

@@ -60,15 +60,15 @@ To automate that when loading the installed module using the ~modprobe~ command,
 options hid_pcmeter interval=500
 #+end_src
 
-* Data of the send report
+* Data of the sent report
 The data of the report send by the kernel module consists of the following
 
 | Byte | Purpose                                         |
 |------+-------------------------------------------------|
 |    0 | Always 0, HID report number for hid raw devices |
 |    1 | 0, system report identifier                     |
-|    2 | overall CPU load                                |
-|    3 | memory usage                                    |
+|    2 | overall CPU load in %                           |
+|    3 | memory usage in %                               |
 |    4 | number of online CPUs                           |
 |    5 | res.                                            |
 |    6 | res.                                            |

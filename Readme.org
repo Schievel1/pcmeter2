@@ -2,11 +2,20 @@
 * Overview
 This a Raspberry Pi Pico (RP2040) version of the [[https://www.swvincent.com/pcmeter/][PCmeter2 by Scott W. Vincent]]. He has excellent documentation written for this thing, so look up his page.
 
-However, Vincent wrote the Software for the Arduino, and I only have Raspberry Pi Picos left. Besides, I needed a good reason to explore writing kernel modules. (I know this is not what in OS is for, but well...)
+However, Vincent wrote the Software for the Arduino, and I only have Raspberry Pi Picos left. Besides, I needed a good reason to explore writing kernel modules. (I know, calculating system usage and sending it out to USB devices is not what an OS is for, but well...)
 
-The software on the Pico is in the directory [[file:pico-firmware/][pico firmware]], it can be easily modified to fit your own needs. The Pico gets its data either via serial communication of via USB hid. The serial communication is meant for debugging and can only take CPU and memory data yet. (But can be easily extended).
-The USB hid report is 64 bytes long and can be multiplexed. The first report (buffer[1] of the report is 0) is sent by the kernel module and consists the overall CPU usage, the overall memory usage, the number of online CPUs and the CPU usage of each core. However, even when using the kernel module you could still send your own data additionally to the Pico by setting buffer[1] to 1.
+The software on the Pico is in the directory [[file:pico-firmware/][pico firmware]], it can be easily modified to fit your own needs. The Pico gets its data either via serial communication of via USB hidraw. The serial communication is meant for debugging and can only take CPU and memory data yet. (But can be easily extended).
+The USB hid report is 64 bytes long and can be multiplexed. The first report (buffer[1] of the report is 0) is sent by the kernel module and consists of the overall CPU usage, the overall memory usage, the number of online CPUs and the CPU usage of each core. However, even when using the kernel module you could still send your own data additionally to the Pico by setting buffer[1] to 1.
 This is because even though the Linux Kernel should know everything about the system, a Linux kernel module does not have access to every symbol in the Linux kernel. Also when it comes to temp sensors systems are quite different, so a kernel module covering every use case is not viable.
+
+So the data can be send using:
+- [[https://swvincent.com/pcmeter/windowsapp.html][Scott Vincents PC-Meter]] program when on windows. This sendn via serial (/dev/ttyACMx, COMx on windows) and can only send CPU usage and memory usage.
+- [[./kernel-module][My Linux kernel module]], which sends via USB hidraw, therefore does not need any configuration regarding which port to use (which can change with serial com) but only sends CPU usage, memory usage, number of CPUs and usage of each individual CPU core.
+- [[./pc-meter-daemon][My Rust daemon]], which can send all the things the Linux Kernel module does send plus the additional user report. The user report is consists of the swap usage, [[https://www.kernel.org/doc/html/latest/admin-guide/cpu-load.html][load avarages]], the disk usages of up to ten disks and the temperatures of up to 20 components. It is using the [[https://docs.rs/sysinfo/latest/sysinfo/index.html][sysinfo crate]] to get this data.
+- Something you write by yourself. Here is how to use that data on the Pico's side: [[file:pico-firmware/Readme.org::Additional meters][Additional meters]]
+.
+
+  The methods of getting data to the pc-meter can be mixed, although it does not make sense to send CPU usage from two different sources at the same time and let them fight each other.
 
 You can find more info about the software and how to customize it in their respective folders.
 

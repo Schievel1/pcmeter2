@@ -1,0 +1,52 @@
+#+title: Readme
+
+* Overview
+This is a Rust program, that collects system info data and sends it over to the pc-meter-pico via USB hidraw.
+It can be used with the [[../kernel-module][kernel-module]] simultaneously, when the kernel is sending the [[file:~/dev/pcmeter-pico/kernel-module/Readme.org::Data of the sent report][Data of the sent report]]
+and the and this program sends only the user-report. With the ~-s / --system~ flag this program also sends the system report, so the kernel module is not needed anymore.
+
+** Daemons
+On Linux
+
+* Installation
+To compile this program yourself, you need a working Rust compiler on your system. Get it [[https://www.rust-lang.org/tools/install][here]].
+Once this is working, compile the program
+#+begin_src bash
+make
+#+end_src
+
+Then install it. Depending on your init system, this can install daemons for openRC or service files for systemd
+#+begin_src bash
+sudo make install
+#+end_src
+
+* Customization
+Pc-meterd can send the system report with CPU and memory data with the ~-s / --system~ flag and with the ~-i / --interval~ flag the pauses between sending can the changed.
+
+To set those flags for the daemon, edit ~/etc/conf.d/pc-meterd~  (when on openRC) or run ~sudo systemctl edit pc-meterd~ (on systemd).
+
+* Data of the reports
+** System report
+[[file:~/dev/pcmeter-pico/kernel-module/Readme.org::Data of the sent report][Kernel module readme]]
+
+** User report
+The data of the user report consists of the following
+
+|  Byte | Purpose                                         |
+|-------+-------------------------------------------------|
+|     0 | Always 0, HID report number for hid raw devices |
+|     1 | 1, user report identifier                       |
+|     2 | swap usage in %                                 |
+|     3 | load average 1 minute, integer                  |
+|     4 | load average 1 minute, fraction                 |
+|     5 | load average 5 minute, integer                  |
+|     6 | load average 5 minute, fraction                 |
+|     7 | load average 15 minute, integer                 |
+|     8 | load average 15 minute, fraction                |
+|     9 | number of disks                                 |
+| 10-19 | disks usage of each disk                        |
+| 20-39 | temperature of each component                   |
+|-------+-------------------------------------------------|
+
+* Components
+The component list and their position in the data, that is send to the pico can be listed with the ~-c / --components~ flag.

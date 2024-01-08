@@ -112,7 +112,7 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
 }
 #+end_src
 
-If you want to send and use data via your own program (or the program I am going to write eventually) use this example, where the temp you want to display would be in the report at buffer[7]:
+If you want to send and use data via your own program or the data from the [[file:~/dev/pcmeter-pico/pc-meter-daemon][pc-meter-daemon]] use this example, where the temp you want to display would be in the report at buffer[7]:
 #+begin_src C
 #define SYSTEM_REPORT 0
 #define USER_REPORT 1
