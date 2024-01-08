@@ -9,6 +9,8 @@ and the and this program sends only the user-report. With the ~-s / --system~ fl
 On Linux
 
 * Installation
+** Linux
+*** Manually, from source
 To compile this program yourself, you need a working Rust compiler on your system. Get it [[https://www.rust-lang.org/tools/install][here]].
 Once this is working, compile the program
 #+begin_src bash
@@ -19,6 +21,10 @@ Then install it. Depending on your init system, this can install daemons for ope
 #+begin_src bash
 sudo make install
 #+end_src
+
+** Windows & MacOS
+I have not tested this on Windows yet, but since the sysinfo crate promises to work with Windows and MacOs, I am confident this works on both systems without any changes. Once I checked that out, I will add binaries for those.
+On windows you can surely start this up at boot by putting a link to the binary into ~shell:startup~. For MacOS I don't know, but I am sure there is a way.
 
 * Customization
 ~pc-meterd~ can send the system report with CPU and memory data with the ~-s / --system~ flag and with the ~-i / --interval~ flag the pauses between sending can the changed.
