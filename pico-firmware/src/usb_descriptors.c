@@ -141,7 +141,7 @@ static const tusb_desc_device_t usbd_desc_device = {
     .bLength                    = sizeof(tusb_desc_device_t),
     .bDescriptorType            = TUSB_DESC_DEVICE,
     .bcdUSB                     = 0x0200,
-    .bDeviceClass               = TUSB_CLASS_HID,
+    .bDeviceClass               = TUSB_CLASS_UNSPECIFIED,
     .bDeviceSubClass            = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol            = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0            = CFG_TUD_ENDPOINT0_SIZE,
@@ -203,7 +203,8 @@ static const uint8_t desc_hid_report[] =
                                   (TUD_HID_INOUT_DESC_LEN       * CFG_TUD_HID   )   )
 
 enum {
-    ITF_NUM_CDC,    ITF_NUM_CDC_DATA,
+    ITF_NUM_CDC,
+    ITF_NUM_CDC_DATA,
     ITF_NUM_HID,
     ITF_NUM_TOTAL
 };
