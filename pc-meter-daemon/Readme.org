@@ -21,9 +21,16 @@ Then install it. Depending on your init system, this can install daemons for ope
 sudo make install
 #+end_src
 
-** Windows & MacOS
-I have not tested this on Windows yet, but since the sysinfo crate promises to work with Windows and MacOs, I am confident this works on both systems without any changes. Once I checked that out, I will add binaries for those.
-On windows you can surely start this up at boot by putting a link to the binary into ~shell:startup~. For MacOS I don't know, but I am sure there is a way.
+** Windows
+I tested this and it works fine on windows as well. Compile with
+#+begin_src bash
+cargo build --release
+#+end_src
+and copy the program in ~target/release/pc-meterd~ to anywhere you like.
+On windows you can surely start this up at boot by putting a link to the binary into ~shell:startup~.
+
+** MacOS
+I don't have a Mac, but since the hidapi crate and the sysinfo crate promise do work in Mac as well I assume it will work too.
 
 * Customization
 ~pc-meterd~ can send the system report with CPU and memory data with the ~-s / --system~ flag and with the ~-i / --interval~ flag the pauses between sending can the changed.
