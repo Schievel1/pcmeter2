@@ -25,7 +25,7 @@
 
 /* #define DEBUG */
 #ifdef DEBUG
- #warning "Build with debug output over serial"
+ #warning "main.c: Build with debug output over serial"
 #endif
 
 #include <stdlib.h>
@@ -52,7 +52,6 @@ enum  {
 };
 
 static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
-
 void led_blinking_task(void);
 
 /*------------- MAIN -------------*/

@@ -39,6 +39,12 @@
 #include "bsp/board.h"
 #include "WS2812.pio.h"
 #include "ws2812.h"
+#include "tusb.h"
+
+/* #define DEBUG */
+#ifdef DEBUG
+ #warning "meters.c: Build with debug output over serial"
+#endif
 
 //Constants
 const int METER_PINS[NUMBER_OF_METERS] = {3, 4};     // Meter output pins
@@ -48,6 +54,7 @@ const int METER_MAX[NUMBER_OF_METERS] = {228, 228};    // Max value for meters
 const int METER_UPDATE_FREQ = 100;      // Frequency of meter updates in milliseconds
 const long SERIAL_TIMEOUT = 2000;       // How long to wait until serial "times out"
 #define READINGS_COUNT 20          // Number of readings to average for each meter
+#define ENDSTDIN 255
 
 //Variables
 #define numRecChars  32            // Sets size of receive buffer
@@ -139,22 +146,22 @@ void meters_setup(void) {
     lastSerialRecd = board_millis();
 }
 
-#define ENDSTDIN 255
 void meters_receiveSerialData(void) {
-    // This is the recvWithEndMarker() function
-    // from Robin2's serial data tutorial
     static uint8_t ndx = 0;
     char endMarker = '\r';
     char rc;
+    uint8_t itf = 0;
 
-    while ((rc = getchar_timeout_us(0)) != ENDSTDIN && newData == false) {
-      if (rc != endMarker) {
+    while ( tud_cdc_n_available(itf) && newData == false)
+    {
+        rc = tud_cdc_n_read_char(itf);
+        if (rc != endMarker) {
           receivedChars[ndx] = rc;
           ndx++;
           if (ndx >= numRecChars) {
             ndx = numRecChars - 1;
           }
-      } else {
+        } else {
           receivedChars[ndx] = '\0'; // terminate the string
           ndx = 0;
           newData = true;
@@ -162,7 +169,7 @@ void meters_receiveSerialData(void) {
           printf("ACM got: %s\n", receivedChars);
 #endif
       }
-  }
+    }
 }
 
 void meters_updateStats(void) {

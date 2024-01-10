@@ -168,7 +168,7 @@ static const tusb_desc_device_t usbd_desc_device = {
 #define EPNUM_CDC_OUT     ( 0x05 )
 #define EPNUM_CDC_IN      ( 0x85 )
 
-#define USBD_CDC_NOTIF_SIZE     (64)
+#define USBD_CDC_NOTIF_SIZE     (8)
 #define USBD_CDC_DATA_SIZE      (64)
 
 // .--------------------------------------------------------------------------.
@@ -200,7 +200,7 @@ static const uint8_t desc_hid_report[] =
 
 #define USBD_DESC_LEN           ( (TUD_CONFIG_DESC_LEN                    ) + \
                                   (TUD_CDC_DESC_LEN       * CFG_TUD_CDC   ) + \
-                                  (TUD_HID_INOUT_DESC_LEN       * CFG_TUD_HID   )   )
+                                  (TUD_HID_INOUT_DESC_LEN * CFG_TUD_HID   )   )
 
 enum {
     ITF_NUM_CDC,
