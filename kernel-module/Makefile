@@ -20,8 +20,8 @@ clean:
 
 install:
 	install -p -m 644 $(TARGET).ko  $(MODDESTDIR)
-	/sbin/depmod -a $(shell uname -r)
+	depmod -a $(shell uname -r)
 
 uninstall:
 	rm -f $(MODDESTDIR)/$(TARGET).ko
-	/sbin/depmod -a $(shell uname -r)
+	depmod -a $(shell uname -r)
